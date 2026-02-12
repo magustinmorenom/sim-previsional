@@ -1,0 +1,8 @@
+{
+  "version": "2025",
+  "sourceWorkbook": "/Users/agustin/Downloads/proyectador de beneficios CEER vf 2025.xlsm",
+  "sourceSheetMortality": "TABLA (sheet2)",
+  "sourceSheetLookup": "Hoja3 (L2:M42)",
+  "interestRateEffectiveAnnual": 0.04,
+  "xminFixed": 187
+}
