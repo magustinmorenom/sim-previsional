@@ -64,6 +64,24 @@ textarea {
   font-size: 15px;
 }
 
+.cms-btn-bases {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b4558;
+  border: 1.5px solid #3b4558;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.cms-btn-bases:hover {
+  background: #3b4558;
+  color: #ffffff;
+}
+
 .cms-step-nav {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

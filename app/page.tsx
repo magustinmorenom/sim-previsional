@@ -201,6 +201,14 @@ export default function HomePage() {
         <header className="cms-main-header">
           <h1>Simulador Previsional</h1>
           <p>Cargá datos del grupo, configurá aportes y obtené una proyección clara para la toma de decisiones.</p>
+          <a
+            href="bases-tecnicas-2025.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cms-btn-bases"
+          >
+            Ver Bases Técnicas
+          </a>
         </header>
 
         <nav className="cms-step-nav" aria-label="Navegación de pasos">

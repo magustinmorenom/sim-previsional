@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bases Técnicas 2025 - CEER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Crimson+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e3a5f;
+            --primary-light: #2d5a87;
+            --accent: #e07c3a;
+            --accent-light: #f4a261;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --info: #3b82f6;
+            --warning: #f59e0b;
+            --code-bg: #f1f5f9;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 3rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .nav {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            gap: 0.25rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav::-webkit-scrollbar { height: 0; }
+
+        .nav a {
+            padding: 0.875rem 0.75rem;
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover, .nav a.active {
+            color: var(--primary);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 3rem;
+            scroll-margin-top: 80px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .card-title .icon { font-size: 1.1rem; }
+
+        /* Subsections */
+        .subsection {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed var(--border);
+        }
+
+        .subsection-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        /* Info Boxes */
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left: 4px solid var(--info);
+            border-radius: 0 10px 10px 0;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+
+        .info-box.warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left-color: var(--warning);
+        }
+
+        .info-box.success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-left-color: var(--success);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .info-box p { font-size: 0.9rem; }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin: 1rem 0;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 0.875rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f9fafb; }
+
+        /* Code/Formula Boxes */
+        .formula-box {
+            background: var(--code-bg);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+
+        .formula-label {
+            color: var(--primary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .formula, pre, code {
+            font-family: 'JetBrains Mono', monospace;
+            color: #334155;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+
+        code {
+            background: rgba(0,0,0,0.05);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            color: var(--primary);
+            font-size: 0.85em;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: #334155;
+        }
+
+        /* Variable Tags */
+        .var {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 0.15rem 0.5rem;
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .var.accent {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .badge.blue { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+        .badge.orange { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+
+        /* Accordion */
+        .accordion {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .accordion-item { border-bottom: 1px solid var(--border); }
+        .accordion-item:last-child { border-bottom: none; }
+
+        .accordion-header {
+            padding: 1rem 1.25rem;
+            background: #f9fafb;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .accordion-header:hover { background: #f3f4f6; }
+
+        .accordion-header::after {
+            content: '+';
+            font-size: 1.2rem;
+            color: var(--accent);
+            font-weight: 700;
+            transition: transform 0.2s;
+        }
+
+        .accordion-item.active .accordion-header::after {
+            content: '−';
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+
+        .accordion-body {
+            padding: 1.25rem;
+        }
+
+        /* Steps/Timeline */
+        .steps {
+            position: relative;
+            padding-left: 2rem;
+            margin: 1rem 0;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--accent), var(--primary));
+            border-radius: 3px;
+        }
+
+        .step {
+            position: relative;
+            padding-bottom: 1.25rem;
+        }
+
+        .step:last-child { padding-bottom: 0; }
+
+        .step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: -2rem;
+            top: 0;
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            transform: translateX(-50%);
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .step-content {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--primary);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        footer p { opacity: 0.8; font-size: 0.9rem; }
+
+        /* Print styles */
+        @media print {
+            .nav-container { display: none; }
+            .section { page-break-inside: avoid; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .container { padding: 1rem; }
+            .section-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+            .section-number { width: 40px; height: 40px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <span class="header-badge">📋 Documento Oficial - Ley 11034</span>
+            <h1>Bases Técnicas 2025</h1>
+            <p>Régimen de Capitalización Individual - Caja de Previsión Social de Profesionales de Ciencias Económicas de Entre Ríos</p>
+        </div>
+    </header>
+
+    <div class="nav-container">
+        <nav class="nav">
+            <a href="#seccion-1">I. Tablas</a>
+            <a href="#seccion-2">II. Tasa</a>
+            <a href="#seccion-3">III. Nomenclatura</a>
+            <a href="#seccion-4">IV. Edades</a>
+            <a href="#seccion-5">V. FUU</a>
+            <a href="#seccion-6">VI. Determinación</a>
+            <a href="#seccion-7">VII. Cálculo Edad</a>
+            <a href="#seccion-8">VIII. Probabilidades</a>
+            <a href="#seccion-9">IX. Haberes</a>
+            <a href="#seccion-10">X. Rendimiento AC</a>
+            <a href="#seccion-11">XI. Transferir</a>
+            <a href="#seccion-12">XII. CPP</a>
+            <a href="#seccion-13">XIII. Pasivo</a>
+            <a href="#seccion-14">XIV. Traspaso</a>
+            <a href="#seccion-15">XV. Ajuste</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <!-- SECCIÓN I -->
+        <section class="section" id="seccion-1">
+            <div class="section-header">
+                <div class="section-number">I</div>
+                <h2 class="section-title">Tablas de Mortalidad</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Las tablas de mortalidad son tablas estadísticas que indican, para cada edad, cuántas personas de un grupo inicial siguen vivas. El sistema CEER usa dos tablas distintas según el estado del afiliado.</p>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">🎯</span> Para Qué Sirve</h3>
+                <ul style="margin-left: 1.5rem;">
+                    <li>Calcular la <strong>probabilidad de supervivencia</strong> de un afiliado a cualquier edad</li>
+                    <li>Determinar el <strong>Factor Único Unitario (FUU)</strong> que define cuánto cobrará de jubilación</li>
+                    <li>Estimar cuánto tiempo se pagarán los beneficios (esperanza de vida)</li>
+                </ul>
+            </div>
+
+            <div class="grid-2">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-title">GAM 1983</div>
+                    <div class="feature-desc">
+                        <strong>Group Annuitants Mortality</strong><br>
+                        Para varones y mujeres <strong>NO inválidos</strong> (activos y jubilados sanos).<br><br>
+                        <em>Excepción edades 0-4 años:</em> Se usan probabilidades de CSO 1980 ajustadas al 40% (masc.) y 30% (fem.).
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <div class="feature-title">MI 85</div>
+                    <div class="feature-desc">
+                        <strong>Mortalidad de Inválidos</strong><br>
+                        Para varones y mujeres en condición de <strong>invalidez</strong>.<br><br>
+                        Mayor mortalidad que GAM 1983 (menor esperanza de vida).
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">💡 Ejemplo de Uso</div>
+                <p>Si un afiliado tiene 65 años, la tabla indica qué probabilidad tiene de llegar a 66, 67, 68... y así calcular cuántos meses de jubilación probablemente cobrará.</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN II -->
+        <section class="section" id="seccion-2">
+            <div class="section-header">
+                <div class="section-number">II</div>
+                <h2 class="section-title">Tasa de Interés de Referencia</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Es la tasa que el sistema utiliza para todos los cálculos actuariales. Representa el rendimiento esperado del dinero en el tiempo y permite "traer a valor presente" los pagos futuros.</p>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-title">💰 Tasa de Referencia Efectiva Anual</div>
+                <p style="font-size: 2rem; font-weight: 700; color: var(--success);">4%</p>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Factores de Actualización</h3>
+                
+                <div class="formula-box">
+                    <div class="formula-label">Factor Mensual</div>
+                    <code>v_12 = 1.04^(-1/12) ≈ 0.996741</code>
+                </div>
+
+                <p style="margin: 1rem 0; font-size: 0.9rem;">$1 a cobrar dentro de 1 mes equivale a $0.9967 hoy.</p>
+
+                <div class="formula-box">
+                    <div class="formula-label">Factor Anual</div>
+                    <code>v = 1.04^(-1) ≈ 0.961538</code>
+                </div>
+
+                <p style="margin-top: 1rem; font-size: 0.9rem;">$1 a cobrar dentro de 1 año equivale a $0.9615 hoy.</p>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Concepto</th>
+                            <th>Fórmula</th>
+                            <th>Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>$1.000 hoy, ¿cuánto es en 5 años?</td>
+                            <td><code>1000 * 1.04^5</code></td>
+                            <td><strong>$1.216,65</strong></td>
+                        </tr>
+                        <tr>
+                            <td>$1.000 en 5 años, ¿cuánto vale hoy?</td>
+                            <td><code>1000 * 1.04^(-5)</code></td>
+                            <td><strong>$821,93</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECCIÓN III -->
+        <section class="section" id="seccion-3">
+            <div class="section-header">
+                <div class="section-number">III</div>
+                <h2 class="section-title">Nomenclatura</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Es el "diccionario" de todas las variables y símbolos que se usan en las fórmulas. Sin entender esto, es imposible leer las fórmulas correctamente.</p>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header">A) Variables Financieras</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">rr(t)</span></td><td>Tasa equivalente correspondiente al período (t) de la tasa de interés de referencia efectiva anual</td></tr>
+                                        <tr><td><span class="var">v_12</span></td><td>Factor de actualización financiero mensual = 1.04^(-1/12)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">B) Cuentas y Saldos</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var accent">BOV</span></td><td>Beneficio Objetivo Vigente</td></tr>
+                                        <tr><td><span class="var">CIAO(t)</span></td><td>Saldo de la Subcuenta de Capitalización Individual de Aportes <strong>Obligatorios</strong> al momento "t"</td></tr>
+                                        <tr><td><span class="var">CIAV(t)</span></td><td>Saldo de la Subcuenta de Capitalización Individual de Aportes <strong>Voluntarios</strong> al momento "t"</td></tr>
+                                        <tr><td><span class="var">CPP(t)</span></td><td>Cuenta de Pago de Prestaciones en el momento "t"</td></tr>
+                                        <tr><td><span class="var">V(T)</span></td><td>Reserva Matemática al momento T</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">C) Factor Actuarial</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var accent">FUU(t)</span></td><td>Factor Único Unitario correspondiente a la edad alcanzada, sexo y estado de capacidad o incapacidad para el trabajo, tanto del afiliado como de sus derechohabientes</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">D) Variables de Tiempo y Edad</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">z</span></td><td>Edad a la fecha del otorgamiento del beneficio</td></tr>
+                                        <tr><td><span class="var">t</span></td><td>Subíndice de tiempo expresado en <strong>meses</strong></td></tr>
+                                        <tr><td><span class="var">q</span></td><td>Tiempo transcurrido, en meses, desde la fecha de afiliación</td></tr>
+                                        <tr><td><span class="var">x_j</span></td><td>Edad del j-ésimo integrante en <strong>meses enteros cumplidos</strong></td></tr>
+                                        <tr><td><span class="var">x_min</span></td><td>Edad en meses del integrante de <strong>menor edad</strong></td></tr>
+                                        <tr><td><span class="var">x</span></td><td>Edad entera en <strong>años</strong></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">E) Variables de Grupo Familiar</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">n</span></td><td>Cantidad de personas con derecho a beneficio</td></tr>
+                                        <tr><td><span class="var">m</span></td><td>Cantidad de cónyuges y/o convivientes con derecho</td></tr>
+                                        <tr><td><span class="var">h</span></td><td>Cantidad de hijos con derecho a beneficio</td></tr>
+                                        <tr><td><span class="var">j</span></td><td>Individualización de la persona (j = 1 a n)</td></tr>
+                                        <tr><td><span class="var">i</span></td><td>Subíndice de configuración (i = 0 hasta 2^n - 1)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="info-box" style="margin-top: 1rem;">
+                                <div class="info-box-title">Concepto de Configuración</div>
+                                <p>Cada <strong>configuración</strong> es una posible combinación de quién tiene derecho al beneficio. Con n personas, hay <strong>2^n configuraciones</strong> posibles.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">F) Variables de Estado (gca, gco, gh)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">gca(i)</span></td><td>Supervivencia (1) o no supervivencia (0) del <strong>causante</strong></td></tr>
+                                        <tr><td><span class="var">gco(i)</span></td><td>Cantidad de <strong>cónyuges/convivientes</strong> sobrevivientes</td></tr>
+                                        <tr><td><span class="var">gh(i)</span></td><td>Cantidad de <strong>hijos</strong> con derecho en la configuración</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">G) Probabilidades</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">p(x_j,t)</span></td><td>Probabilidad de supervivencia de un <strong>activo</strong> de edad x_j por t meses</td></tr>
+                                        <tr><td><span class="var">p^i(x_j,t)</span></td><td>Probabilidad de supervivencia de un <strong>inválido</strong> de edad x_j por t meses</td></tr>
+                                        <tr><td><span class="var">p^p(x_j,t)</span></td><td>Probabilidad de invalidez futura para hijos activos menores de 21</td></tr>
+                                        <tr><td><span class="var">p^ai(x,1)</span></td><td>Probabilidad de invalidarse dentro de un año y sobrevivir como inválido</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">H) Funciones de Sobrevivientes</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">l(x)</span></td><td>Sobrevivientes a edad x en <strong>años</strong> (Tabla GAM 1983)</td></tr>
+                                        <tr><td><span class="var">l^i(x)</span></td><td>Sobrevivientes inválidos a edad x en <strong>años</strong> (Tabla MI 85)</td></tr>
+                                        <tr><td><span class="var">l(x_j)</span></td><td>Sobrevivientes a edad x_j en <strong>meses</strong> (interpolación)</td></tr>
+                                        <tr><td><span class="var">ENT(a)</span></td><td>Parte entera de "a" (FLOOR)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">I) Proporciones de Beneficio</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">B^M(i)</span></td><td>Proporción del beneficio para <strong>pensión por fallecimiento</strong></td></tr>
+                                        <tr><td><span class="var">B^I(i)</span></td><td>Proporción del beneficio para <strong>retiro por invalidez</strong></td></tr>
+                                        <tr><td><span class="var">B^J(i)</span></td><td>Proporción del beneficio para <strong>jubilación ordinaria</strong></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">J) Porcentajes para Derechohabientes (beta, delta)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var accent">beta</span></td><td>Porcentaje para <strong>cónyuge/conviviente</strong><br>beta = 0,70 si h = 0 (no hay hijos)<br>beta = 0,35 si h > 0 (hay hijos)</td></tr>
+                                        <tr><td><span class="var accent">delta</span></td><td>Porcentaje para <strong>hijos</strong><br>delta = 0,35 si m > 0 (hay cónyuge)<br>delta = 0,70 si m = 0 (no hay cónyuge)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">K) Variables Dicotómicas (alpha, gamma)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><span class="var">alpha_j,i</span></td><td>Variable 0 ó 1 que determina si se usa p_G(x;t) o (1-p_G(x;t)) para la j-ésima persona en la i-ésima configuración</td></tr>
+                                        <tr><td><span class="var">gamma(j,t)</span></td><td>Variable 0 ó 1 que determina qué probabilidad (p, p^i, p^p) usar para el j-ésimo integrante en el momento t</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN IV -->
+        <section class="section" id="seccion-4">
+            <div class="section-header">
+                <div class="section-number">IV</div>
+                <h2 class="section-title">Asignación de Edades</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Es la regla que define cómo se <strong>numera</strong> (asigna el índice j) a cada persona del grupo familiar según el tipo de beneficio. El orden importa porque las fórmulas usan j para identificar a cada integrante.</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">💔</span> Pensión por Fallecimiento</h3>
+                    <p style="margin-bottom: 1rem; font-size: 0.9rem;"><strong>NO hay causante vivo</strong>, solo derechohabientes:</p>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Índice j</th><th>Integrante</th></tr></thead>
+                            <tbody>
+                                <tr><td>1 a m</td><td>Cónyuges/Convivientes</td></tr>
+                                <tr><td>(m+1) a n</td><td>Hijos</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title"><span class="icon">🎯</span> Jubilación Ordinaria / Invalidez</h3>
+                    <p style="margin-bottom: 1rem; font-size: 0.9rem;"><strong>SÍ hay causante vivo</strong> (el afiliado):</p>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Índice j</th><th>Integrante</th></tr></thead>
+                            <tbody>
+                                <tr><td>1</td><td><strong>Causante</strong></td></tr>
+                                <tr><td>2 a (m+1)</td><td>Cónyuges/Convivientes</td></tr>
+                                <tr><td>(m+2) a n</td><td>Hijos</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN V -->
+        <section class="section" id="seccion-5">
+            <div class="section-header">
+                <div class="section-number">V</div>
+                <h2 class="section-title">Factor Único Unitario (FUU)</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>El FUU se utilizará para el cálculo de los correspondientes <strong>Beneficios Previsionales</strong>. Es el <strong>valor actual actuarial</strong> de los posibles pagos a los que tenga derecho el causante y/o el grupo de derechohabientes.</p>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmula del FUU</h3>
+                <div class="formula-box">
+                    <div class="formula-label">Fórmula General</div>
+                    <code>FUU = SUMA(t) { v^t * SUMA(i) { B(i) * P(i,t) } }</code>
+                </div>
+
+                <div class="subsection">
+                    <div class="subsection-title">Valores de B(i)</div>
+                    <p><span class="badge green">B(i) = 1</span> Afiliado con jubilación ordinaria, retiro por invalidez, o más de 2 hijos con derecho</p>
+                    <p style="margin-top: 0.5rem;"><span class="badge orange">B(i) = 0,7</span> Hijos con derecho, cónyuge con derecho, cónyuge + 1 hijo</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">💰</span> Beneficio Previsional Inicial</h3>
+                <div class="formula-box">
+                    <code>P(0) = (CIAO(t) + CIAV(t)) / FUU(q)</code>
+                </div>
+
+                <div class="subsection">
+                    <div class="subsection-title">Distribución del Beneficio</div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Beneficiario</th><th>Fórmula</th></tr></thead>
+                            <tbody>
+                                <tr><td><strong>Causante</strong></td><td>P(0)</td></tr>
+                                <tr><td><strong>Cada hijo</strong></td><td>(delta / n) * P(0)</td></tr>
+                                <tr><td><strong>Cada cónyuge</strong></td><td>(beta / m) * P(0)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN VI -->
+        <section class="section" id="seccion-6">
+            <div class="section-header">
+                <div class="section-number">VI</div>
+                <h2 class="section-title">Determinación del FUU (por tipo)</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmula Completa Expandida</h3>
+                <pre><code>FUU(q) = SUMA(t=1 hasta n*12-x_min) {
+  SUMA(i=0 hasta 2^n-1) {
+    B(i) * PRODUCTO(j=1 hasta n) {
+      gamma1(j,t) * [alpha_j,i * p(x_j,t) + (1-alpha_j,i) * (1-p(x_j,t))] +
+      gamma2(j) * [alpha_j,i * p^i(x_j,t) + (1-alpha_j,i) * (1-p^i(x_j,t))] +
+      gamma3(j,t) * [alpha_j,i * p^p(x_j,t) + (1-alpha_j,i) * (1-p^p(x_j,t))]
+    }
+  }
+}</code></pre>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-item">
+                    <div class="accordion-header">A) Jubilación Ordinaria - Tabla B^J(i)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Condición</th><th>Descripción</th><th>B^J(i)</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>gca(i) = 1</td><td>El causante sobrevive</td><td><span class="badge green">1</span></td></tr>
+                                        <tr><td>gca=0, gco=0, gh=0</td><td>Ningún integrante con derecho</td><td><span class="badge">0</span></td></tr>
+                                        <tr><td>gca=0, gco=0, gh=1</td><td>Solo 1 hijo con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gca=0, gco>0, gh=0</td><td>Solo cónyuge(s) con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gca=0, gco>0, gh=1</td><td>Cónyuge(s) + 1 hijo</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gca=0, gco>0, gh>2</td><td>Cónyuge(s) + más de 2 hijos</td><td><span class="badge green">1</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">B) Jubilación por Invalidez - Tabla B^I(i)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Condición</th><th>Descripción</th><th>B^I(i)</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>gca(i) = 1</td><td>El causante sobrevive</td><td><span class="badge green">1</span></td></tr>
+                                        <tr><td>gca=0, gco=0, gh=0</td><td>Ningún integrante con derecho</td><td><span class="badge">0</span></td></tr>
+                                        <tr><td>gca=0, gco=0, gh>=1</td><td>Al menos 1 hijo con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gca=0, gco>0, gh=0</td><td>Solo cónyuge(s) con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gca=0, gco>0, gh>=1</td><td>Cónyuge(s) + hijo(s)</td><td><span class="badge orange">0,7</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="info-box warning" style="margin-top: 1rem;">
+                                <div class="info-box-title">⚠️ Diferencia con Jub. Ordinaria</div>
+                                <p>Aquí NO hay caso B^I = 1 cuando hay muchos hijos. Máximo es 0,7 sin causante.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">C) Pensión por Fallecimiento - Tabla B^M(i)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="table-container">
+                                <table>
+                                    <thead><tr><th>Condición</th><th>Descripción</th><th>B^M(i)</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>gco=0, gh=0</td><td>Ningún integrante con derecho</td><td><span class="badge">0</span></td></tr>
+                                        <tr><td>gco=0, gh>=1</td><td>Solo hijos con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gco>0, gh=0</td><td>Solo cónyuge(s) con derecho</td><td><span class="badge orange">0,7</span></td></tr>
+                                        <tr><td>gco>0, gh>=1</td><td>Cónyuge(s) + hijo(s)</td><td><span class="badge orange">0,7</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="info-box warning" style="margin-top: 1rem;">
+                                <div class="info-box-title">⚠️ Nota importante</div>
+                                <p>En Pensión por Fallecimiento <strong>TODOS los casos dan 0 ó 0,7</strong>. No existe 0,9 ni 1.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN VII -->
+        <section class="section" id="seccion-7">
+            <div class="section-header">
+                <div class="section-number">VII</div>
+                <h2 class="section-title">Cálculo de Edad en Meses</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Es la <strong>rutina oficial</strong> para calcular la edad exacta de cualquier persona expresada en meses enteros cumplidos. El sistema CEER trabaja con edades en meses (no años) para mayor precisión actuarial.</p>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📋</span> Procedimiento</h3>
+                <div class="steps">
+                    <div class="step" data-step="1">
+                        <div class="step-title">Calcular DIFANIO</div>
+                        <div class="step-content"><code>DIFANIO = Anio_vigencia - Anio_nacimiento</code></div>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-title">Calcular DIFMES</div>
+                        <div class="step-content"><code>DIFMES = Mes_vigencia - Mes_nacimiento</code></div>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-title">Calcular DIFDIA</div>
+                        <div class="step-content"><code>DIFDIA = Dia_vigencia - Dia_nacimiento</code></div>
+                    </div>
+                    <div class="step" data-step="4">
+                        <div class="step-title">Ajustar si DIFDIA < 0</div>
+                        <div class="step-content"><code>SI DIFDIA < 0 → DIFMES = DIFMES - 1</code></div>
+                    </div>
+                    <div class="step" data-step="5">
+                        <div class="step-title">Ajustar si DIFMES < 0</div>
+                        <div class="step-content"><code>SI DIFMES < 0 → DIFMES += 12; DIFANIO -= 1</code></div>
+                    </div>
+                    <div class="step" data-step="6">
+                        <div class="step-title">Resultado Final</div>
+                        <div class="step-content"><code><strong>x_j = DIFANIO * 12 + DIFMES</strong></code></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">💡 Ejemplo</div>
+                <p><strong>Nacimiento:</strong> 19/05/1966 | <strong>Cálculo:</strong> 12/02/2026</p>
+                <p>DIFANIO=60, DIFMES=2-5=-3, DIFDIA=12-19=-7</p>
+                <p>Ajuste: DIFMES=-4 → DIFMES=8, DIFANIO=59</p>
+                <p><strong>x_j = 59*12 + 8 = 716 meses</strong> (59,67 años)</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN VIII -->
+        <section class="section" id="seccion-8">
+            <div class="section-header">
+                <div class="section-number">VIII</div>
+                <h2 class="section-title">Cálculo de Probabilidades</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Las fórmulas oficiales para calcular las probabilidades de supervivencia. Como las tablas vienen en <strong>años</strong> pero el sistema trabaja en <strong>meses</strong>, se requiere <strong>interpolación lineal</strong>.</p>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header">1) Probabilidad de Supervivencia de Activos</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="formula-box">
+                                <div class="formula-label">Fórmula Principal</div>
+                                <code>p(x_j; t) = l(x_j + t) / l(x_j)</code>
+                            </div>
+                            <div class="formula-box">
+                                <div class="formula-label">Interpolación Lineal</div>
+                                <code>l(x_j + t) = (1 - f) * l(ENT((x_j+t)/12)) + f * l(ENT((x_j+t)/12) + 1)</code>
+                            </div>
+                            <div class="formula-box">
+                                <div class="formula-label">Fracción f</div>
+                                <code>f = (x_j + t)/12 - ENT((x_j + t)/12)</code>
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.9rem;">Función de sobrevivientes: <code>l(x+1) = l(x) * (1 - q(x))</code> con <code>l(0) = 1</code></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">2) Probabilidad de Supervivencia de Inválidos</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="formula-box">
+                                <div class="formula-label">Fórmula Principal</div>
+                                <code>p^i(x_j; t) = l^i(x_j + t) / l^i(x_j)</code>
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.9rem;">Misma interpolación que activos, pero usando tabla MI 85 con <code>l^i(0) = 0</code></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">3) Probabilidad de Invalidez Futura (hijos)</div>
+                    <div class="accordion-content">
+                        <div class="accordion-body">
+                            <div class="formula-box">
+                                <div class="formula-label">Fórmula Mensual</div>
+                                <code>p^p(x_j;t) = (0.000572/12) * SUMA(s_j=0 hasta 21*12-x_j-1) { p(x_j;s_j) * p^i(x_j+s_j+1; t-s_j-1) }</code>
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.9rem;"><strong>Condición:</strong> t > (21*12 - x_j)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN IX -->
+        <section class="section" id="seccion-9">
+            <div class="section-header">
+                <div class="section-number">IX</div>
+                <h2 class="section-title">Haberes Mínimos</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Qué Es</h3>
+                <p>Mecanismo para garantizar un <strong>haber mínimo (VAR)</strong> en casos de Pensión por Muerte en Actividad y Jubilación por Invalidez. El <strong>FOCIM</strong> aporta la diferencia cuando el saldo no alcanza.</p>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmula</h3>
+                <pre><code>SI (CIAO / FUU) >= VAR ENTONCES
+    Beneficio = CIAO / FUU
+SI NO
+    Contr_FOCIM = VAR * FUU - CIAO
+    Beneficio = (CIAO + Contr_FOCIM) / FUU = VAR
+FIN SI</code></pre>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-title">💡 Resumen</div>
+                <p><strong>Saldo suficiente:</strong> Beneficio = CIAO / FUU</p>
+                <p><strong>Saldo insuficiente:</strong> Beneficio = VAR (FOCIM completa)</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN X -->
+        <section class="section" id="seccion-10">
+            <div class="section-header">
+                <div class="section-number">X</div>
+                <h2 class="section-title">Rendimiento de los Activos Computables</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Definición</h3>
+                <p>Se denominan <strong>Activos Computables (AC)</strong> a todos aquellos que se encuentran invertidos por el SISTEMA a los efectos de hacer frente a los compromisos con los afiliados, tanto en actividad como en pasividad.</p>
+                <p style="margin-top: 1rem;">Con la periodicidad y método que se establezcan, se determinará la tasa de rendimiento obtenida por la inversión de los AC, expresada en tanto por uno <strong>(R)</strong>.</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN XI -->
+        <section class="section" id="seccion-11">
+            <div class="section-header">
+                <div class="section-number">XI</div>
+                <h2 class="section-title">Rendimiento a Transferir a las Cuentas</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmula</h3>
+                <div class="formula-box">
+                    <code>r_prima(t) = (R(t) * AC(t-1)) / (SUMA_CIAO + SUMA_CIAV + SUMA_CPP + FOCIM + FSRS)</code>
+                </div>
+
+                <div class="subsection">
+                    <div class="subsection-title">Condición de Aplicación</div>
+                    <pre><code>SI r_prima(t) >= rr(t) ENTONCES
+    tasa_aplicar = r_prima(t)
+SI NO
+    tasa_aplicar = rr(t)   // Garantía del 4%
+FIN SI</code></pre>
+                </div>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-title">✅ Garantía</div>
+                <p>El sistema garantiza al menos la <strong>tasa de referencia del 4%</strong> a los afiliados.</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN XII -->
+        <section class="section" id="seccion-12">
+            <div class="section-header">
+                <div class="section-number">XII</div>
+                <h2 class="section-title">Cuentas de Pagos de Prestaciones</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmula</h3>
+                <div class="formula-box">
+                    <code>CPP(t) = P(t) * FUU(x + t)</code>
+                </div>
+
+                <div class="table-container" style="margin-top: 1rem;">
+                    <table>
+                        <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="var">CPP(t)</span></td><td>Cuentas de Pagos de Prestaciones en "t"</td></tr>
+                            <tr><td><span class="var">P(t)</span></td><td>Importe de la Prestación devengada en el momento "t"</td></tr>
+                            <tr><td><span class="var">FUU(x+t)</span></td><td>Factor Único Unitario a la edad alcanzada "x+t"</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">💡 Ejemplo</div>
+                <p>Jubilado cobrando $100.000/mes con FUU=138:</p>
+                <p><code>CPP = $100.000 * 138 = <strong>$13.800.000</strong></code> (reserva necesaria)</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN XIII -->
+        <section class="section" id="seccion-13">
+            <div class="section-header">
+                <div class="section-number">XIII</div>
+                <h2 class="section-title">Pasivo Computable del Régimen</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📖</span> Definición</h3>
+                <p>Está constituido por la sumatoria de las CIAO, las CIAV, las CPP y el FOCIM, al momento (t).</p>
+
+                <div class="formula-box" style="margin-top: 1rem;">
+                    <code>PC(t) = SUMA(CIAO(t) + CIAV(t) + CPP(t)) + FOCIM(t)</code>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="feature-card">
+                    <div class="feature-title">Afiliados Activos</div>
+                    <div class="feature-desc">CIAO + CIAV (aportes acumulados)</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">Afiliados Pasivos</div>
+                    <div class="feature-desc">CPP (reservas para jubilaciones/pensiones)</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">Contingencias</div>
+                    <div class="feature-desc">FOCIM (fondo para invalidez y muerte)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN XIV -->
+        <section class="section" id="seccion-14">
+            <div class="section-header">
+                <div class="section-number">XIV</div>
+                <h2 class="section-title">Traspaso de Rentabilidad a Cuentas</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Fórmulas de Capitalización</h3>
+                <div class="formula-box">
+                    <code>CIAO(t) = (1 + r(t)) * CIAO(t-1)</code>
+                </div>
+                <div class="formula-box">
+                    <code>CIAV(t) = (1 + r(t)) * CIAV(t-1)</code>
+                </div>
+
+                <div class="info-box warning" style="margin-top: 1rem;">
+                    <div class="info-box-title">⚠️ Condición</div>
+                    <p>Solo se aplica si <code>(1 + r(t)) > 1</code>. No se aplica rendimiento negativo.</p>
+                </div>
+
+                <p style="margin-top: 1rem; font-size: 0.9rem;"><strong>r(t)</strong> = Rentabilidad neta (ya descontados gastos, impuestos, sellados y erogaciones)</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN XV -->
+        <section class="section" id="seccion-15">
+            <div class="section-header">
+                <div class="section-number">XV</div>
+                <h2 class="section-title">Ajuste del Importe de la Prestación</h2>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><span class="icon">📐</span> Expresión en Pesos de la Prestación</h3>
+                <div class="formula-box">
+                    <code>P(t) = P(t-1) * (1 + r(t)) / (1 + i(t))</code>
+                </div>
+
+                <div class="table-container" style="margin-top: 1rem;">
+                    <table>
+                        <thead><tr><th>Variable</th><th>Significado</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="var">P(t-1)</span></td><td>Prestación en pesos en el período t-1</td></tr>
+                            <tr><td><span class="var">P(t)</span></td><td>Prestación en el momento "t", expresada en pesos</td></tr>
+                            <tr><td><span class="var">r(t)</span></td><td>Rentabilidad asignada en el período "t"</td></tr>
+                            <tr><td><span class="var">i(t)</span></td><td>Tasa de referencia 4% anual (equivalente al período)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Situación</th><th>r(t) vs i(t)</th><th>Efecto</th></tr></thead>
+                    <tbody>
+                        <tr><td>Rendimiento > Referencia</td><td>r(t) > i(t)</td><td><span class="badge green">Aumenta</span> la prestación</td></tr>
+                        <tr><td>Rendimiento = Referencia</td><td>r(t) = i(t)</td><td><span class="badge blue">Mantiene</span> la prestación</td></tr>
+                        <tr><td>Rendimiento < Referencia</td><td>r(t) < i(t)</td><td><span class="badge orange">Disminuye</span> la prestación</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-title">💡 ¿Por qué se divide por (1 + i(t))?</div>
+                <p>El FUU ya tiene "incorporada" la tasa de referencia del 4%. Si rinde exactamente 4%, la prestación se mantiene igual. Si rinde más, el excedente se traslada al jubilado.</p>
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        <p><strong>Caja de Previsión Social de Profesionales de Ciencias Económicas de Entre Ríos</strong></p>
+        <p>Ley Nro. 11034 - Bases Técnicas 2025 - Régimen de Capitalización</p>
+    </footer>
+
+    <script>
+        // Accordion functionality
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const item = header.parentElement;
+                const wasActive = item.classList.contains('active');
+                
+                // Close all items in the same accordion
+                item.parentElement.querySelectorAll('.accordion-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+                
+                // Toggle the clicked item
+                if (!wasActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Nav active state on scroll
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
