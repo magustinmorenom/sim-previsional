@@ -13,10 +13,13 @@
     "extract:data": "python3 scripts/extract_excel_data.py"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
     "next": "^15.5.12",
     "pdf-lib": "1.17.1",
     "react": "19.0.0",
+    "react-day-picker": "^9.13.2",
     "react-dom": "19.0.0",
+    "react-hook-form": "^7.71.1",
     "zod": "3.24.1"
   },
   "devDependencies": {

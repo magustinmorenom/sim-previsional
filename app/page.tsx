@@ -1,99 +1,795 @@
 "use client";
 
-import { useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useController,
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldPath
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DayPicker } from "react-day-picker";
+import { createPortal } from "react-dom";
+import "react-day-picker/dist/style.css";
 import { defaultSimulationInput } from "@/lib/defaults";
-import type {
-  BeneficiaryInput,
-  SimulationInput,
-  SimulationResult
-} from "@/lib/types/simulation";
+import { simulationInputSchema } from "@/lib/validation/simulation-input";
+import type { BeneficiaryInput, SimulationInput, SimulationResult } from "@/lib/types/simulation";
 
-function IconBase({
-  size = 18,
-  strokeWidth = 1.5,
-  children,
-  ...props
-}: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) {
+const steps = ["Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const resultFaqQuestions = [
+  "¿Cuánto representa el beneficio mensual estimado?",
+  "¿Este valor está en términos actuales o ajusta inflación?",
+  "¿Desde qué fecha empezaría a cobrar?",
+  "¿Qué parte depende de mis datos y qué parte de supuestos técnicos?",
+  "¿Cuánto cambia el resultado si modifico BOV o años de aporte?",
+  "¿Qué efecto tiene aumentar el aporte voluntario mensual?",
+  "¿Cómo impacta mi grupo familiar en el cálculo?",
+  "¿Qué es el PPUU y por qué aparece en el resultado?",
+  "¿Qué tan confiable es este resultado?",
+  "¿Estoy por encima o por debajo de mi objetivo?"
+] as const;
+
+const newBeneficiary: BeneficiaryInput = {
+  type: "H",
+  sex: 1,
+  birthDate: "2000-01-01",
+  invalid: 0
+};
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  const date = new Date(year, month - 1, day);
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      {children}
-    </svg>
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    year >= 1900 &&
+    year <= 2099
   );
 }
 
-const BadgePercent = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <path d="M7 17 17 7" />
-    <circle cx="8" cy="8" r="2.2" />
-    <circle cx="16" cy="16" r="2.2" />
-  </IconBase>
-);
+function parseIsoDate(value: string): Date | undefined {
+  if (!ISO_DATE_REGEX.test(value)) {
+    return undefined;
+  }
 
-const CircleDollarSign = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v10" />
-    <path d="M15.3 9.6c0-1.1-1.5-2-3.3-2s-3.3.9-3.3 2 1.5 2 3.3 2 3.3.9 3.3 2-1.5 2-3.3 2-3.3-.9-3.3-2" />
-  </IconBase>
-);
+  const [year, month, day] = value.split("-").map(Number);
+  if (!isValidCalendarDate(year, month, day)) {
+    return undefined;
+  }
 
-const FileText = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-    <path d="M14 2v5h5" />
-    <path d="M9 13h6" />
-    <path d="M9 17h6" />
-  </IconBase>
-);
+  return new Date(year, month - 1, day);
+}
 
-const UsersRound = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <circle cx="9" cy="8.5" r="2.8" />
-    <circle cx="16.5" cy="9.5" r="2.3" />
-    <path d="M3.5 19a6 6 0 0 1 11 0" />
-    <path d="M14.5 19a4.5 4.5 0 0 1 6 0" />
-  </IconBase>
-);
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear().toString().padStart(4, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
-const steps = ["Contexto", "Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
+function formatIsoToDisplay(iso: string): string {
+  const parsed = parseIsoDate(iso);
+  if (!parsed) {
+    return iso;
+  }
+
+  const day = parsed.getDate().toString().padStart(2, "0");
+  const month = (parsed.getMonth() + 1).toString().padStart(2, "0");
+  const year = parsed.getFullYear().toString();
+  return `${day}/${month}/${year}`;
+}
+
+function normalizeDisplayDate(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  return [day, month, year].filter(Boolean).join("/");
+}
+
+function displayToIso(display: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display);
+  if (!match) {
+    return null;
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  if (!isValidCalendarDate(year, month, day)) {
+    return null;
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+function estimateRetirementDate(
+  beneficiaries: BeneficiaryInput[] | undefined,
+  calculationDate: string
+): string | null {
+  if (!beneficiaries?.length) {
+    return null;
+  }
+
+  const anchor = beneficiaries.find((item) => item.type === "T") ?? beneficiaries[0];
+  const birth = parseIsoDate(anchor.birthDate);
+  const calc = parseIsoDate(calculationDate);
+
+  if (!birth || !calc) {
+    return null;
+  }
+
+  const candidate = new Date(birth.getFullYear() + 65, birth.getMonth(), birth.getDate());
+  return formatIsoDate(candidate > calc ? candidate : calc);
+}
+
+type TraceStep = {
+  title: string;
+  parameters: ReactNode;
+  formula: ReactNode;
+  outcome: ReactNode;
+};
+
+function tracePill(value: string, tone: "param" | "calc" | "result"): ReactNode {
+  return <span className={`cms-pill cms-pill-${tone}`}>{value}</span>;
+}
+
+type DateFieldProps = {
+  control: Control<SimulationInput>;
+  name: FieldPath<SimulationInput>;
+  label: string;
+  compact?: boolean;
+  disabled?: boolean;
+};
+
+function DateField({ control, name, label, compact = false, disabled = false }: DateFieldProps) {
+  const { field, fieldState } = useController({ control, name });
+  const value = typeof field.value === "string" ? field.value : "";
+  const [text, setText] = useState<string>(formatIsoToDisplay(value));
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState<Date>(parseIsoDate(value) ?? new Date(2000, 0, 1));
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const parsed = parseIsoDate(value);
+    if (parsed) {
+      setText(formatIsoToDisplay(value));
+      setMonth(parsed);
+      return;
+    }
+
+    setText(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) {
+        return;
+      }
+
+      const rect = anchor.getBoundingClientRect();
+      const maxWidth = 320;
+      const margin = 12;
+      const nextLeft = Math.min(
+        Math.max(rect.left, margin),
+        Math.max(margin, window.innerWidth - maxWidth - margin)
+      );
+
+      setPopoverPosition({
+        top: rect.bottom + 8,
+        left: nextLeft
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target) || popoverRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [open]);
+
+  const onInputChange = (raw: string) => {
+    const normalized = normalizeDisplayDate(raw);
+    setText(normalized);
+
+    if (normalized.length === 10) {
+      const iso = displayToIso(normalized);
+      field.onChange(iso ?? normalized);
+      if (iso) {
+        const parsed = parseIsoDate(iso);
+        if (parsed) {
+          setMonth(parsed);
+        }
+      }
+      return;
+    }
+
+    field.onChange(normalized);
+  };
+
+  const selectedDate = parseIsoDate(value);
+  const hasRegexError = fieldState.error?.message?.includes("YYYY-MM-DD") ?? false;
+  const errorMessage = hasRegexError
+    ? "Ingresá una fecha válida en formato DD/MM/AAAA"
+    : fieldState.error?.message;
+
+  return (
+    <label className={`cms-field cms-date-field ${compact ? "compact" : ""}`}>
+      <span className={compact ? "sr-only" : ""}>{label}</span>
+      <div className="cms-date-inputs" ref={anchorRef}>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="DD/MM/AAAA"
+          value={text}
+          onChange={(event) => onInputChange(event.target.value)}
+          disabled={disabled}
+          maxLength={10}
+        />
+        <button
+          type="button"
+          className="cms-btn cms-btn-soft cms-date-trigger"
+          onClick={() => setOpen((prev) => !prev)}
+          disabled={disabled}
+          aria-label={`Abrir calendario de ${label}`}
+        >
+          Calendario
+        </button>
+      </div>
+
+      {open &&
+        createPortal(
+          <div
+            className="cms-date-popover"
+            ref={popoverRef}
+            style={{ top: `${popoverPosition.top}px`, left: `${popoverPosition.left}px` }}
+          >
+            <DayPicker
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => {
+                if (!date) {
+                  return;
+                }
+
+                const iso = formatIsoDate(date);
+                field.onChange(iso);
+                setOpen(false);
+              }}
+              month={month}
+              onMonthChange={setMonth}
+              captionLayout="dropdown"
+              navLayout="after"
+              fromYear={1900}
+              toYear={2099}
+              showOutsideDays
+              fixedWeeks
+            />
+          </div>,
+          document.body
+        )}
+
+      {errorMessage && <span className="cms-field-error">{errorMessage}</span>}
+    </label>
+  );
+}
 
 export default function HomePage() {
   const [step, setStep] = useState(0);
-  const [input, setInput] = useState<SimulationInput>(defaultSimulationInput);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
+  const [isTraceOpen, setIsTraceOpen] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const showFaq = false;
+  const [traceRevealCount, setTraceRevealCount] = useState(0);
+  const traceIntervalRef = useRef<number | null>(null);
+  const traceCompletionRef = useRef<number | null>(null);
+
+  const {
+    control,
+    register,
+    watch,
+    reset,
+    trigger,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<SimulationInput>({
+    resolver: zodResolver(simulationInputSchema),
+    defaultValues: defaultSimulationInput,
+    mode: "onChange"
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "beneficiaries"
+  });
+
+  const beneficiaries = watch("beneficiaries");
+  const calculationDate = watch("calculationDate");
+  const mandatoryStartAge = watch("mandatoryContribution.startAge");
+  const mandatoryEndAge = watch("mandatoryContribution.endAge");
+  const voluntaryStartAge = watch("voluntaryContribution.startAge");
+  const voluntaryEndAge = watch("voluntaryContribution.endAge");
+  const voluntaryMonthlyAmount = watch("voluntaryContribution.monthlyAmount");
+  const accountBalance = watch("accountBalance");
+  const bov = watch("bov");
 
   const counts = useMemo(() => {
-    const titulares = input.beneficiaries.filter((item) => item.type === "T").length;
-    const spouses = input.beneficiaries.filter((item) => item.type === "C").length;
-    const children = input.beneficiaries.filter((item) => item.type === "H").length;
+    const list = beneficiaries ?? [];
+    const titulares = list.filter((item) => item.type === "T").length;
+    const spouses = list.filter((item) => item.type === "C").length;
+    const children = list.filter((item) => item.type === "H").length;
 
     return {
       titulares,
       spouses,
       children,
-      n: input.beneficiaries.length
+      n: list.length
     };
-  }, [input.beneficiaries]);
+  }, [beneficiaries]);
 
   const hasBlockingTitular = counts.titulares > 1;
 
-  const onSimulation = async () => {
+  const retirementPreview = useMemo(
+    () => estimateRetirementDate(beneficiaries, calculationDate) ?? "pendiente",
+    [beneficiaries, calculationDate]
+  );
+
+  const voluntaryMonths = useMemo(() => {
+    if (
+      typeof voluntaryStartAge !== "number" ||
+      Number.isNaN(voluntaryStartAge) ||
+      typeof voluntaryEndAge !== "number" ||
+      Number.isNaN(voluntaryEndAge)
+    ) {
+      return 0;
+    }
+
+    const years = Math.max(0, voluntaryEndAge - voluntaryStartAge);
+    return years * 12;
+  }, [voluntaryEndAge, voluntaryStartAge]);
+
+  const voluntaryNominalContribution = useMemo(() => {
+    if (typeof voluntaryMonthlyAmount !== "number" || Number.isNaN(voluntaryMonthlyAmount)) {
+      return 0;
+    }
+
+    return Math.max(0, voluntaryMonthlyAmount) * voluntaryMonths;
+  }, [voluntaryMonthlyAmount, voluntaryMonths]);
+
+  const benefitAnnual = result ? result.projectedBenefit * 12 : 0;
+  const benefitVsBovPct =
+    result && bov > 0 ? (result.projectedBenefit / bov) * 100 : null;
+  const balanceGrowthPct =
+    result && accountBalance > 0 ? ((result.finalBalance - accountBalance) / accountBalance) * 100 : null;
+
+  const resultFaqItems = useMemo(
+    () => [
+      {
+        question: resultFaqQuestions[0],
+        answer: (
+          <>
+            Es el monto mensual estimado para tu jubilación. En este escenario, el valor es{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} por mes, que
+            equivale a {tracePill(result ? formatCurrency(benefitAnnual) : "pendiente", "calc")} por año (12 meses).
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[1],
+        answer: (
+          <>
+            Está expresado con las bases técnicas vigentes y su actualización operativa se refleja con la distribución
+            cuatrimestral de la rentabilidad de los rendimientos de la Caja. Ejemplo simple: si la inflación anual
+            fuera {tracePill("60%", "param")}, mantener poder de compra requeriría subir de{" "}
+            {tracePill("$100.000", "result")} a {tracePill("$160.000", "result")} en 12 meses.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[2],
+        answer: (
+          <>
+            El cobro se proyecta desde la fecha de jubilación estimada:{" "}
+            {tracePill(result?.retirementDate ?? retirementPreview, "result")}. Esa fecha surge al comparar fecha de
+            cálculo vs. cumplimiento de 65 años.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[3],
+        answer: (
+          <>
+            Tus datos (edades, grupo, aportes, saldo y BOV) definen el escenario. Las bases técnicas aplican la
+            transformación actuarial. En este caso usamos {tracePill(`${counts.n} personas`, "param")},{" "}
+            {tracePill("tasa 4%", "param")} y tablas vigentes para llegar al resultado.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[4],
+        answer: (
+          <>
+            Regla práctica: subir BOV o extender años de aporte tiende a subir el beneficio. Hoy tenés{" "}
+            {tracePill(`BOV ${formatCurrency(bov || 0)}`, "param")} y un beneficio estimado de{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")}. Si aumentás BOV en{" "}
+            {tracePill("10%", "calc")}, esperá un impacto positivo al recalcular.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[5],
+        answer: (
+          <>
+            El aporte voluntario suma capital antes del retiro. Con tu configuración actual serían{" "}
+            {tracePill(`${formatNumber(voluntaryMonths)} meses`, "param")} x{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "param")} ={" "}
+            {tracePill(formatCurrency(voluntaryNominalContribution), "result")} nominales (sin rendimiento). A mayor
+            aporte mensual, mayor beneficio esperado.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[6],
+        answer: (
+          <>
+            El grupo familiar modifica cobertura y probabilidades actuariales. Hoy el escenario tiene{" "}
+            {tracePill(`${counts.spouses} cónyuge(s)`, "param")} y {tracePill(`${counts.children} hijo(s)`, "param")}.
+            Si agregás beneficiarios, el PPUU puede subir o bajar según composición y edades.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[7],
+        answer: (
+          <>
+            El PPUU es el divisor actuarial del saldo. En este caso: {tracePill(formatNumber(result?.ppuu ?? 0), "param")}{" "}
+            y la relación es {tracePill("beneficio = saldo final / PPUU", "calc")}. Si el PPUU sube, el beneficio
+            mensual tiende a bajar; si baja, el beneficio tiende a subir.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[8],
+        answer: (
+          <>
+            Es una proyección técnica útil para comparar escenarios, no una promesa de cobro exacto. Tomala como guía
+            de decisión: hoy el resultado refleja tus datos actuales y{" "}
+            {tracePill(`${result?.trace.warnings.length ?? 0} advertencias`, "param")}.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[9],
+        answer: (
+          <>
+            Compará beneficio proyectado contra tu objetivo mensual (BOV). Escenario actual: beneficio{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} vs BOV{" "}
+            {tracePill(formatCurrency(bov || 0), "param")}. Cobertura aproximada:{" "}
+            {tracePill(benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente", "calc")}.
+          </>
+        )
+      }
+    ],
+    [
+      benefitAnnual,
+      benefitVsBovPct,
+      bov,
+      counts.children,
+      counts.n,
+      counts.spouses,
+      result,
+      retirementPreview,
+      voluntaryMonthlyAmount,
+      voluntaryMonths,
+      voluntaryNominalContribution
+    ]
+  );
+
+  const traceSteps = useMemo<TraceStep[]>(
+    () => [
+      {
+        title: "Validación de entrada",
+        parameters: (
+          <>
+            Revisamos {tracePill(`${counts.n} personas`, "param")},{" "}
+            {tracePill(`${counts.titulares} titular(es)`, "param")} y la fecha de cálculo{" "}
+            {tracePill(calculationDate || "sin dato", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Comprobamos en lenguaje de negocio que haya como máximo un titular, que las fechas sean válidas y que el
+            grupo no supere {tracePill("12 personas", "calc")} para la corrida exacta.
+          </>
+        ),
+        outcome: hasBlockingTitular
+          ? (
+            <>
+              Detectamos {tracePill("más de un titular", "result")}. El cálculo queda bloqueado hasta corregirlo.
+            </>
+            )
+          : (
+            <>La entrada queda {tracePill("lista para simular", "result")}.</>
+            )
+      },
+      {
+        title: "Fecha objetivo de jubilación",
+        parameters: (
+          <>
+            Partimos de nacimiento titular{" "}
+            {tracePill(beneficiaries?.find((b) => b.type === "T")?.birthDate ?? "sin titular", "param")} y fecha de
+            cálculo {tracePill(calculationDate || "sin dato", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Elegimos la fecha más tardía entre la fecha de cálculo y la fecha en la que el titular cumple{" "}
+            {tracePill("65 años", "calc")}.
+          </>
+        ),
+        outcome: (
+          <>
+            Fecha de jubilación estimada: {tracePill(result?.retirementDate ?? retirementPreview, "result")}.
+          </>
+        )
+      },
+      {
+        title: "Edades técnicas en meses",
+        parameters: (
+          <>
+            Calculamos para {tracePill(`${counts.n} beneficiarios`, "param")} usando la fecha de jubilación{" "}
+            {tracePill(result?.retirementDate ?? retirementPreview, "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Convertimos cada edad a meses con diferencia exacta de años, meses y días para alinear con las tablas
+            técnicas.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Edades en meses obtenidas: {tracePill(result.agesInMonths.join(", "), "result")}.
+            </>
+            )
+          : (
+            <>Las edades en meses se completan cuando se ejecuta la simulación.</>
+            )
+      },
+      {
+        title: "Cálculo actuarial de PPUU",
+        parameters: (
+          <>
+            Usamos {tracePill(`n=${counts.n}`, "param")}, {tracePill(`xmin=${result?.trace.xmin ?? 187}`, "param")},{" "}
+            {tracePill(`tMax=${result?.trace.tMax ?? 1145}`, "param")} y tasa técnica{" "}
+            {tracePill("4% anual", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Recorremos mes a mes todas las configuraciones posibles del grupo, ponderamos probabilidades y descontamos
+            cada flujo al presente.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              PPUU calculado: {tracePill(formatNumber(result.ppuu), "result")}.
+            </>
+            )
+          : (
+            <>El PPUU se muestra cuando finaliza la corrida.</>
+            )
+      },
+      {
+        title: "Proyección de saldo final",
+        parameters: (
+          <>
+            Tomamos saldo actual {tracePill(formatCurrency(accountBalance || 0), "param")}, BOV{" "}
+            {tracePill(formatCurrency(bov || 0), "param")}, rango voluntario{" "}
+            {tracePill(`${voluntaryStartAge}-${voluntaryEndAge}`, "param")} y aporte mensual{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Proyectamos el saldo acumulando al retiro, sumando el componente por BOV y el efecto de aportes voluntarios
+            según rango configurado. Referencia rápida: {tracePill(`${formatNumber(voluntaryMonths)} meses`, "calc")} x{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "calc")} ={" "}
+            {tracePill(formatCurrency(voluntaryNominalContribution), "calc")} nominales.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Saldo final interno: {tracePill(formatCurrency(result.finalBalance), "result")}. Variación vs saldo
+              actual: {tracePill(balanceGrowthPct !== null ? formatPercent(balanceGrowthPct) : "sin referencia", "result")}.
+            </>
+            )
+          : (
+            <>El saldo final interno queda disponible al terminar el cálculo.</>
+            )
+      },
+      {
+        title: "Beneficio mensual proyectado",
+        parameters: (
+          <>
+            Usamos PPUU {tracePill(result ? formatNumber(result.ppuu) : "pendiente", "param")} y saldo final{" "}
+            {tracePill(result ? formatCurrency(result.finalBalance) : "pendiente", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Dividimos el saldo final por el PPUU para obtener un valor mensual equivalente y comparable.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Beneficio proyectado: {tracePill(formatCurrency(result.projectedBenefit), "result")}.
+            </>
+            )
+          : (
+            <>El beneficio se informa cuando termina todo el proceso.</>
+            )
+      },
+      {
+        title: "Control de consistencia",
+        parameters: (
+          <>
+            Revisamos advertencias de traza {tracePill(`${result?.trace.warnings.length ?? 0}`, "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Si aparece alguna inconsistencia técnica, la registramos explícitamente para que el usuario sepa qué revisar.
+          </>
+        ),
+        outcome: result
+          ? result.trace.warnings.length > 0
+            ? (
+              <>
+                Advertencias detectadas: {tracePill(result.trace.warnings.join(" | "), "result")}.
+              </>
+              )
+            : (
+              <>Estado final: {tracePill("sin advertencias técnicas", "result")}.</>
+              )
+          : (
+            <>El control final se completa cuando finaliza la corrida.</>
+            )
+      }
+    ],
+    [
+      accountBalance,
+      balanceGrowthPct,
+      beneficiaries,
+      bov,
+      calculationDate,
+      counts.n,
+      counts.titulares,
+      hasBlockingTitular,
+      mandatoryEndAge,
+      mandatoryStartAge,
+      result,
+      retirementPreview,
+      voluntaryEndAge,
+      voluntaryMonthlyAmount,
+      voluntaryNominalContribution,
+      voluntaryMonths,
+      voluntaryStartAge
+    ]
+  );
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    if (traceIntervalRef.current) {
+      window.clearInterval(traceIntervalRef.current);
+    }
+    if (traceCompletionRef.current) {
+      window.clearTimeout(traceCompletionRef.current);
+    }
+
+    const revealTarget = Math.max(traceSteps.length - 1, 1);
+    let current = 1;
+    setTraceRevealCount(1);
+    traceIntervalRef.current = window.setInterval(() => {
+      current = Math.min(current + 1, revealTarget);
+      setTraceRevealCount(current);
+      if (current >= revealTarget && traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+        traceIntervalRef.current = null;
+      }
+    }, 260);
+
+    return () => {
+      if (traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+        traceIntervalRef.current = null;
+      }
+    };
+  }, [loading, traceSteps.length]);
+
+  useEffect(() => {
+    if (!result) {
+      return;
+    }
+
+    if (traceCompletionRef.current) {
+      window.clearTimeout(traceCompletionRef.current);
+    }
+
+    traceCompletionRef.current = window.setTimeout(() => {
+      setTraceRevealCount(traceSteps.length);
+      traceCompletionRef.current = null;
+    }, 180);
+
+    return () => {
+      if (traceCompletionRef.current) {
+        window.clearTimeout(traceCompletionRef.current);
+        traceCompletionRef.current = null;
+      }
+    };
+  }, [result, traceSteps.length]);
+
+  useEffect(() => {
+    return () => {
+      if (traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+      }
+      if (traceCompletionRef.current) {
+        window.clearTimeout(traceCompletionRef.current);
+      }
+    };
+  }, []);
+
+  const runSimulation = handleSubmit(async (formValues) => {
     setLoading(true);
     setError(null);
+    setTraceRevealCount(0);
 
     try {
       const response = await fetch("/api/v1/simulations/run", {
@@ -101,7 +797,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(input)
+        body: JSON.stringify(formValues)
       });
 
       const payload = await response.json();
@@ -112,16 +808,16 @@ export default function HomePage() {
       }
 
       setResult(payload as SimulationResult);
-      setStep(4);
+      setStep(3);
     } catch {
       setResult(null);
       setError("No fue posible ejecutar la simulación. Intentá nuevamente.");
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const onDownloadPdf = async () => {
+  const onDownloadPdf = handleSubmit(async (formValues) => {
     if (!result) {
       return;
     }
@@ -135,7 +831,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ input, result })
+        body: JSON.stringify({ input: formValues, result })
       });
 
       if (!response.ok) {
@@ -158,57 +854,90 @@ export default function HomePage() {
     } finally {
       setDownloadingPdf(false);
     }
-  };
-
-  const updateBeneficiary = (index: number, patch: Partial<BeneficiaryInput>): void => {
-    setInput((prev) => {
-      const next = prev.beneficiaries.map((beneficiary, currentIndex) =>
-        currentIndex === index ? { ...beneficiary, ...patch } : beneficiary
-      );
-      return { ...prev, beneficiaries: next };
-    });
-  };
+  });
 
   const addBeneficiary = (): void => {
-    if (input.beneficiaries.length >= 56) {
+    if (fields.length >= 56) {
       return;
     }
 
-    setInput((prev) => ({
-      ...prev,
-      beneficiaries: [
-        ...prev.beneficiaries,
-        {
-          type: "H",
-          sex: 1,
-          birthDate: "2000-01-01",
-          invalid: 0
-        }
-      ]
-    }));
+    append(newBeneficiary);
   };
 
-  const removeBeneficiary = (index: number): void => {
-    setInput((prev) => ({
-      ...prev,
-      beneficiaries: prev.beneficiaries.filter((_, currentIndex) => currentIndex !== index)
-    }));
+  const canProceedSync = (): boolean => {
+    if (step === 0) {
+      const allBirthDatesValid = (beneficiaries ?? []).every((item) => Boolean(parseIsoDate(item.birthDate)));
+      return !hasBlockingTitular && counts.n <= 12 && allBirthDatesValid;
+    }
+
+    if (step === 1) {
+      return Boolean(parseIsoDate(calculationDate ?? ""));
+    }
+
+    return true;
+  };
+
+  const validateCurrentStep = async (): Promise<boolean> => {
+    if (step === 0) {
+      const valid = await trigger("beneficiaries");
+      return valid && !hasBlockingTitular && counts.n <= 12;
+    }
+
+    if (step === 1) {
+      return trigger([
+        "calculationDate",
+        "accountBalance",
+        "mandatoryContribution.startAge",
+        "mandatoryContribution.endAge",
+        "voluntaryContribution.startAge",
+        "voluntaryContribution.endAge",
+        "voluntaryContribution.monthlyAmount"
+      ]);
+    }
+
+    if (step === 2) {
+      return trigger(["bov"]);
+    }
+
+    return true;
+  };
+
+  const goNext = async (): Promise<void> => {
+    if (step >= steps.length - 1) {
+      return;
+    }
+
+    const valid = await validateCurrentStep();
+    if (valid) {
+      setStep((prev) => prev + 1);
+    }
+  };
+
+  const goPrev = (): void => {
+    if (step > 0) {
+      setStep((prev) => prev - 1);
+    }
   };
 
   return (
     <main className="cms-shell">
       <section className="cms-main-surface">
         <header className="cms-main-header">
-          <h1>Simulador Previsional</h1>
-          <p>Cargá datos del grupo, configurá aportes y obtené una proyección clara para la toma de decisiones.</p>
-          <a
-            href="bases-tecnicas-2025.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cms-btn-bases"
-          >
-            Ver Bases Técnicas
-          </a>
+          <div className="cms-header-copy">
+            <h1>Simulador Previsional</h1>
+            <p>Cargá datos del grupo, configurá aportes y obtené una proyección clara para la toma de decisiones.</p>
+            <a
+              href="bases-tecnicas-2025.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cms-btn-bases"
+            >
+              Ver Bases Técnicas
+            </a>
+          </div>
+          <div className="cms-header-logo-wrap" aria-hidden="true">
+            <img src="/cps-logo.svg" alt="CPS PCEER" className="cms-header-logo" />
+          </div>
         </header>
 
         <nav className="cms-step-nav" aria-label="Navegación de pasos">
@@ -226,50 +955,6 @@ export default function HomePage() {
 
         <section className="cms-panel">
           {step === 0 && (
-            <>
-              <h2>Contexto</h2>
-              <p>
-                Esta pantalla reúne los componentes principales de una simulación previsional y permite avanzar de forma
-                guiada, con datos claros y resultados listos para compartir.
-              </p>
-
-              <div className="cms-service-grid">
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <CircleDollarSign size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Proyección de beneficio</h3>
-                  <span className="cms-tag">CALCULO ESTIMADO</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <UsersRound size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Grupo familiar</h3>
-                  <span className="cms-tag">DATOS DE TITULAR Y BENEFICIARIOS</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <BadgePercent size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Aportes y parámetros</h3>
-                  <span className="cms-tag">CONFIGURACION PERSONALIZADA</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <FileText size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Reporte descargable</h3>
-                  <span className="cms-tag">PDF RESUMIDO</span>
-                </article>
-              </div>
-            </>
-          )}
-
-          {step === 1 && (
             <>
               <h2>Grupo familiar</h2>
               <p>
@@ -290,18 +975,11 @@ export default function HomePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {input.beneficiaries.map((beneficiary, index) => (
-                      <tr key={`${beneficiary.birthDate}-${index}`}>
+                    {fields.map((fieldItem, index) => (
+                      <tr key={fieldItem.id}>
                         <td>{index + 1}</td>
                         <td>
-                          <select
-                            value={beneficiary.type}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                type: event.target.value as BeneficiaryInput["type"]
-                              })
-                            }
-                          >
+                          <select {...register(`beneficiaries.${index}.type`)}>
                             <option value="T">T (Titular)</option>
                             <option value="C">C (Cónyuge/conviviente)</option>
                             <option value="H">H (Hijo)</option>
@@ -309,36 +987,27 @@ export default function HomePage() {
                         </td>
                         <td>
                           <select
-                            value={beneficiary.sex}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                sex: Number(event.target.value) as BeneficiaryInput["sex"]
-                              })
-                            }
+                            {...register(`beneficiaries.${index}.sex`, {
+                              setValueAs: (value) => Number(value) as 1 | 2
+                            })}
                           >
                             <option value={1}>1 (M)</option>
                             <option value={2}>2 (F)</option>
                           </select>
                         </td>
-                        <td>
-                          <input
-                            type="date"
-                            value={beneficiary.birthDate}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                birthDate: event.target.value
-                              })
-                            }
+                        <td className="cms-date-cell">
+                          <DateField
+                            control={control}
+                            name={`beneficiaries.${index}.birthDate` as const}
+                            label="Fecha nacimiento"
+                            compact
                           />
                         </td>
                         <td>
                           <select
-                            value={beneficiary.invalid}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                invalid: Number(event.target.value) as BeneficiaryInput["invalid"]
-                              })
-                            }
+                            {...register(`beneficiaries.${index}.invalid`, {
+                              setValueAs: (value) => Number(value) as 0 | 1
+                            })}
                           >
                             <option value={0}>0 (No)</option>
                             <option value={1}>1 (Sí)</option>
@@ -348,8 +1017,8 @@ export default function HomePage() {
                           <button
                             type="button"
                             className="cms-btn cms-btn-danger"
-                            onClick={() => removeBeneficiary(index)}
-                            disabled={input.beneficiaries.length <= 1}
+                            onClick={() => remove(index)}
+                            disabled={fields.length <= 1}
                           >
                             Quitar
                           </button>
@@ -367,7 +1036,11 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="cms-btn cms-btn-soft"
-                  onClick={() => setInput(defaultSimulationInput)}
+                  onClick={() => {
+                    reset(defaultSimulationInput);
+                    setResult(null);
+                    setError(null);
+                  }}
                 >
                   Restaurar datos iniciales
                 </button>
@@ -379,182 +1052,286 @@ export default function HomePage() {
                 </span>
               </div>
 
-              {hasBlockingTitular && (
-                <div className="cms-status error">Solo se permite un titular (T).</div>
+              {hasBlockingTitular && <div className="cms-status error">Solo se permite un titular (T).</div>}
+              {typeof errors.beneficiaries?.message === "string" && (
+                <div className="cms-status error">{errors.beneficiaries.message}</div>
               )}
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <h2>Fechas y aportes</h2>
+              <p>Completá fecha de cálculo, saldo de cuenta y el tramo de aportes para personalizar la proyección.</p>
+
+              <div className="cms-form-grid">
+                <DateField control={control} name="calculationDate" label="Fecha de cálculo" />
+
+                <label className="cms-field">
+                  Saldo de cuenta
+                  <input
+                    type="number"
+                    {...register("accountBalance", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.accountBalance?.message && (
+                    <span className="cms-field-error">{errors.accountBalance.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes obligatorios - Edad inicio
+                  <input
+                    type="number"
+                    {...register("mandatoryContribution.startAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.mandatoryContribution?.startAge?.message && (
+                    <span className="cms-field-error">{errors.mandatoryContribution.startAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes obligatorios - Edad fin
+                  <input
+                    type="number"
+                    {...register("mandatoryContribution.endAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.mandatoryContribution?.endAge?.message && (
+                    <span className="cms-field-error">{errors.mandatoryContribution.endAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes voluntarios - Edad inicio
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.startAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.startAge?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.startAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes voluntarios - Edad fin
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.endAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.endAge?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.endAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Importe mensual aportes voluntarios
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.monthlyAmount", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.monthlyAmount?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.monthlyAmount.message}</span>
+                  )}
+                </label>
+              </div>
             </>
           )}
 
           {step === 2 && (
             <>
-              <h2>Fechas y aportes</h2>
-              <p>
-                Completá fecha de cálculo, saldo de cuenta y el tramo de aportes para personalizar la proyección.
-              </p>
-
-              <div className="cms-form-grid">
-                <label className="cms-field">
-                  Fecha de cálculo
-                  <input
-                    type="date"
-                    value={input.calculationDate}
-                    onChange={(event) =>
-                      setInput((prev) => ({ ...prev, calculationDate: event.target.value }))
-                    }
-                  />
-                </label>
-
-                  <label className="cms-field">
-                    Saldo de cuenta
-                    <input
-                      type="number"
-                      value={input.accountBalance}
-                      onChange={(event) =>
-                        setInput((prev) => ({ ...prev, accountBalance: Number(event.target.value) }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes obligatorios - Edad inicio
-                    <input
-                      type="number"
-                      value={input.mandatoryContribution.startAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          mandatoryContribution: {
-                            ...prev.mandatoryContribution,
-                            startAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes obligatorios - Edad fin
-                    <input
-                      type="number"
-                      value={input.mandatoryContribution.endAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          mandatoryContribution: {
-                            ...prev.mandatoryContribution,
-                            endAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes voluntarios - Edad inicio
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.startAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            startAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes voluntarios - Edad fin
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.endAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            endAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Importe mensual aportes voluntarios
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.monthlyAmount}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            monthlyAmount: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
               <h2>Parámetros</h2>
-              <p>
-                Ajustá el valor de referencia del objetivo para obtener una estimación alineada a tu escenario.
-              </p>
+              <p>Ajustá el valor de referencia del objetivo para obtener una estimación alineada a tu escenario.</p>
 
               <div className="cms-form-grid">
                 <label className="cms-field">
                   BOV
                   <input
                     type="number"
-                    value={input.bov}
-                    onChange={(event) =>
-                      setInput((prev) => ({ ...prev, bov: Number(event.target.value) }))
-                    }
+                    {...register("bov", {
+                      valueAsNumber: true
+                    })}
                   />
+                  {errors.bov?.message && <span className="cms-field-error">{errors.bov.message}</span>}
                 </label>
 
-                  <article className="cms-info-card">
-                    <h3>Base técnica activa</h3>
-                    <p>La simulación utiliza parámetros vigentes para proyectar resultados de forma consistente.</p>
-                    <span className="cms-tag">VERSION 2025</span>
-                  </article>
+                <article className="cms-info-card">
+                  <h3>Base técnica activa</h3>
+                  <p>La simulación utiliza parámetros vigentes para proyectar resultados de forma consistente.</p>
+                  <span className="cms-tag">VERSION 2025</span>
+                </article>
               </div>
             </>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <>
               <h2>Resultados</h2>
               <p>Ejecutá la simulación y revisá los indicadores clave del escenario configurado.</p>
 
-              <div className="cms-actions-row">
-                <button
-                  type="button"
-                  className="cms-btn cms-btn-main"
-                  disabled={loading || hasBlockingTitular || counts.n > 12}
-                  onClick={() => void onSimulation()}
-                >
-                  {loading ? "Calculando..." : "Ejecutar simulación"}
-                </button>
+              <div className="cms-results-layout">
+                <section className="cms-results-column">
+                  <div className="cms-results-compact">
+                    <div className="cms-actions-row cms-results-actions">
+                      <button
+                        type="button"
+                        className="cms-btn cms-btn-main cms-btn-run"
+                        disabled={loading || hasBlockingTitular || counts.n > 12}
+                        onClick={() => void runSimulation()}
+                      >
+                        <span className="cms-btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 20 20" focusable="false">
+                            <path d="M6 4L16 10L6 16V4Z" />
+                          </svg>
+                        </span>
+                        {loading ? "Calculando..." : "Ejecutar simulación"}
+                      </button>
 
+                      <button
+                        type="button"
+                        className="cms-btn cms-btn-secondary"
+                        disabled={!result || downloadingPdf}
+                        onClick={() => void onDownloadPdf()}
+                      >
+                        <span className="cms-btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 20 20" focusable="false">
+                            <path d="M12 2H6C4.9 2 4 2.9 4 4V16C4 17.1 4.9 18 6 18H14C15.1 18 16 17.1 16 16V6L12 2Z" />
+                            <path d="M12 2V6H16" />
+                            <path d="M7.5 11H12.5" />
+                            <path d="M7.5 14H11.5" />
+                          </svg>
+                        </span>
+                        {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
+                      </button>
+                    </div>
+
+                    {result ? (
+                      <>
+                        <div className="cms-kpi-strip">
+                          <article className="cms-kpi-item">
+                            <span>PPUU Acumulados</span>
+                            <strong>{formatNumber(result.ppuu)}</strong>
+                          </article>
+                          <article className="cms-kpi-item cms-kpi-item-primary">
+                            <span>Beneficio Mensual Proyectado</span>
+                            <strong>{formatCurrency(result.projectedBenefit)}</strong>
+                            <small>
+                              Resultado principal · Cobertura vs BOV:{" "}
+                              {benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente"}
+                            </small>
+                          </article>
+                        </div>
+
+                        <div className="cms-info-chips">
+                          <span className="cms-chip">Fecha de jubilación: {result.retirementDate}</span>
+                          <span className="cms-chip">
+                            Grupo: {result.counts.n} personas ({result.counts.spouses} cónyuges, {result.counts.children} hijos)
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="cms-info-chips">
+                        <span className="cms-chip">Sin resultados todavía.</span>
+                        <span className="cms-chip">Ejecutá la simulación para generar la proyección mensual estimada.</span>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <aside className="cms-trace-column">
+                  <div className="cms-trace-head">
+                    <h3>Bitácora del cálculo</h3>
+                    <button
+                      type="button"
+                      className="cms-section-chip-toggle"
+                      aria-expanded={isTraceOpen}
+                      onClick={() => setIsTraceOpen((prev) => !prev)}
+                    >
+                      {isTraceOpen ? "Ocultar detalle" : "Ver detalle del cálculo"}
+                    </button>
+                  </div>
+                  {isTraceOpen && (
+                    <>
+                      <ol className="cms-trace-list">
+                        {traceSteps.map((traceStep, index) => {
+                          const isVisible = index < traceRevealCount;
+                          const isActive = loading && index === traceRevealCount - 1;
+                          return (
+                            <li
+                              key={traceStep.title}
+                              className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
+                            >
+                              <span className="cms-trace-number">{index + 1}.</span>
+                              <div className="cms-trace-body">
+                                <p className="cms-trace-title">{traceStep.title}</p>
+                                <p>
+                                  <strong>Parámetros:</strong> {traceStep.parameters}
+                                </p>
+                                <p>
+                                  <strong>Fórmula / regla:</strong> {traceStep.formula}
+                                </p>
+                                <p>
+                                  <strong>Resultado:</strong> {traceStep.outcome}
+                                </p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
+                    </>
+                  )}
+                </aside>
+              </div>
+              {showFaq && (
+                <article className="cms-faq-card cms-faq-standalone">
                   <button
                     type="button"
-                    className="cms-btn cms-btn-secondary"
-                    disabled={!result || downloadingPdf}
-                    onClick={() => void onDownloadPdf()}
+                    className="cms-section-chip-toggle cms-section-chip-toggle-wide"
+                    aria-expanded={isFaqOpen}
+                    onClick={() => setIsFaqOpen((prev) => !prev)}
                   >
-                    {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
+                    {isFaqOpen ? "Ocultar preguntas frecuentes" : "Preguntas frecuentes sobre el resultado"}
                   </button>
-              </div>
+                  {isFaqOpen && (
+                    <div className="cms-faq-list">
+                      {resultFaqItems.map((item, index) => {
+                        const isOpen = openFaqIndex === index;
+                        return (
+                          <div key={item.question} className={`cms-faq-item ${isOpen ? "open" : ""}`}>
+                            <button
+                              type="button"
+                              className="cms-faq-trigger"
+                              aria-expanded={isOpen}
+                              onClick={() => setOpenFaqIndex((prev) => (prev === index ? null : index))}
+                            >
+                              <span>{item.question}</span>
+                              <span className="cms-faq-chevron" aria-hidden="true">
+                                ▾
+                              </span>
+                            </button>
+                            <div className="cms-faq-panel">
+                              <div className="cms-faq-content">
+                                <p>{item.answer}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </article>
+              )}
 
               {counts.n > 12 && (
                 <div className="cms-status error">
@@ -563,34 +1340,22 @@ export default function HomePage() {
               )}
 
               {error && <div className="cms-status error">{error}</div>}
-
-              {result && (
-                <>
-                  <div className="cms-metric-grid">
-                    <article className="cms-metric-card">
-                      <span>PPUU</span>
-                      <strong>{formatNumber(result.ppuu)}</strong>
-                    </article>
-                    <article className="cms-metric-card">
-                      <span>Saldo final</span>
-                      <strong>{formatCurrency(result.finalBalance)}</strong>
-                    </article>
-                    <article className="cms-metric-card">
-                      <span>Beneficio proyectado</span>
-                      <strong>{formatCurrency(result.projectedBenefit)}</strong>
-                    </article>
-                  </div>
-
-                  <div className="cms-inline-note">
-                    <span>Fecha de jubilación: {result.retirementDate}</span>
-                    <span>
-                      Grupo: {result.counts.n} personas ({result.counts.spouses} cónyuges, {result.counts.children} hijos)
-                    </span>
-                  </div>
-                </>
-              )}
             </>
           )}
+
+          <div className="cms-wizard-nav">
+            <button type="button" className="cms-btn cms-btn-soft" onClick={goPrev} disabled={step === 0}>
+              Anterior
+            </button>
+            <button
+              type="button"
+              className="cms-btn cms-btn-main"
+              onClick={() => void goNext()}
+              disabled={step === steps.length - 1 || !canProceedSync()}
+            >
+              Siguiente
+            </button>
+          </div>
         </section>
       </section>
     </main>
@@ -619,4 +1384,10 @@ function formatCurrency(value: number): string {
     currency: "ARS",
     maximumFractionDigits: 0
   }).format(value);
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("es-AR", {
+    maximumFractionDigits: 1
+  }).format(value) + "%";
 }
