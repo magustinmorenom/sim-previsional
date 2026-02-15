@@ -84,7 +84,7 @@ textarea {
 
 .cms-step-nav {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
@@ -179,21 +179,21 @@ textarea {
   box-shadow: var(--card-shadow);
 }
 
-table {
+.cms-table-wrap table {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
 }
 
-th,
-td {
+.cms-table-wrap th,
+.cms-table-wrap td {
   text-align: left;
   border-bottom: 1px solid #eaedf4;
   padding: 10px;
   font-size: 13px;
 }
 
-th {
+.cms-table-wrap th {
   color: #4f5b71;
   font-weight: 700;
 }
@@ -287,7 +287,7 @@ input[type="text"] {
 
 .cms-metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -346,6 +346,108 @@ input[type="text"] {
   font-size: 14px;
 }
 
+.cms-wizard-nav {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cms-date-field {
+  position: relative;
+  gap: 8px;
+}
+
+.cms-date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cms-date-inputs input {
+  width: min(220px, 100%);
+  min-height: 42px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+
+.cms-field-error {
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cms-date-trigger {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.cms-date-popover {
+  position: fixed;
+  z-index: 1200;
+  padding: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #dbe2ee;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+}
+
+.cms-date-popover .rdp {
+  --rdp-accent-color: #192852;
+  --rdp-background-color: #e9eef9;
+  --rdp-accent-background-color: #192852;
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  --rdp-nav-height: 2.25rem;
+  --rdp-nav_button-height: 2rem;
+  --rdp-nav_button-width: 2rem;
+  font-size: 13px;
+  margin: 0;
+}
+
+.cms-date-popover .rdp-caption_label {
+  font-weight: 700;
+  font-size: 18px;
+  color: #1f2a44;
+}
+
+.cms-date-popover .rdp-dropdown {
+  border-radius: 8px;
+  border: 1px solid #d7dce8;
+  padding: 4px 6px;
+  background: #ffffff;
+  width: auto !important;
+  min-width: 0;
+}
+
+.cms-date-popover select {
+  width: auto !important;
+}
+
+.cms-date-popover .rdp-month_caption {
+  font-size: 18px;
+}
+
+.cms-date-popover .rdp-nav button {
+  color: #1d4ed8;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 @media (max-width: 900px) {
   .cms-main-surface,
   .cms-panel {
@@ -360,5 +462,18 @@ input[type="text"] {
   .cms-metric-grid,
   .cms-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cms-date-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cms-date-inputs input {
+    width: 100%;
+  }
+
+  .cms-date-trigger {
+    width: 100%;
   }
 }

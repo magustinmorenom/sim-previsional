@@ -1,97 +1,316 @@
 "use client";
 
-import { useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useController,
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldPath
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DayPicker } from "react-day-picker";
+import { createPortal } from "react-dom";
+import "react-day-picker/dist/style.css";
 import { defaultSimulationInput } from "@/lib/defaults";
-import type {
-  BeneficiaryInput,
-  SimulationInput,
-  SimulationResult
-} from "@/lib/types/simulation";
+import { simulationInputSchema } from "@/lib/validation/simulation-input";
+import type { BeneficiaryInput, SimulationInput, SimulationResult } from "@/lib/types/simulation";
 
-function IconBase({
-  size = 18,
-  strokeWidth = 1.5,
-  children,
-  ...props
-}: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) {
+const steps = ["Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const newBeneficiary: BeneficiaryInput = {
+  type: "H",
+  sex: 1,
+  birthDate: "2000-01-01",
+  invalid: 0
+};
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  const date = new Date(year, month - 1, day);
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      {children}
-    </svg>
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    year >= 1900 &&
+    year <= 2099
   );
 }
 
-const BadgePercent = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <path d="M7 17 17 7" />
-    <circle cx="8" cy="8" r="2.2" />
-    <circle cx="16" cy="16" r="2.2" />
-  </IconBase>
-);
+function parseIsoDate(value: string): Date | undefined {
+  if (!ISO_DATE_REGEX.test(value)) {
+    return undefined;
+  }
 
-const CircleDollarSign = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v10" />
-    <path d="M15.3 9.6c0-1.1-1.5-2-3.3-2s-3.3.9-3.3 2 1.5 2 3.3 2 3.3.9 3.3 2-1.5 2-3.3 2-3.3-.9-3.3-2" />
-  </IconBase>
-);
+  const [year, month, day] = value.split("-").map(Number);
+  if (!isValidCalendarDate(year, month, day)) {
+    return undefined;
+  }
 
-const FileText = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-    <path d="M14 2v5h5" />
-    <path d="M9 13h6" />
-    <path d="M9 17h6" />
-  </IconBase>
-);
+  return new Date(year, month - 1, day);
+}
 
-const UsersRound = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => (
-  <IconBase {...props}>
-    <circle cx="9" cy="8.5" r="2.8" />
-    <circle cx="16.5" cy="9.5" r="2.3" />
-    <path d="M3.5 19a6 6 0 0 1 11 0" />
-    <path d="M14.5 19a4.5 4.5 0 0 1 6 0" />
-  </IconBase>
-);
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear().toString().padStart(4, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
-const steps = ["Contexto", "Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
+function formatIsoToDisplay(iso: string): string {
+  const parsed = parseIsoDate(iso);
+  if (!parsed) {
+    return iso;
+  }
+
+  const day = parsed.getDate().toString().padStart(2, "0");
+  const month = (parsed.getMonth() + 1).toString().padStart(2, "0");
+  const year = parsed.getFullYear().toString();
+  return `${day}/${month}/${year}`;
+}
+
+function normalizeDisplayDate(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  return [day, month, year].filter(Boolean).join("/");
+}
+
+function displayToIso(display: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display);
+  if (!match) {
+    return null;
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  if (!isValidCalendarDate(year, month, day)) {
+    return null;
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+type DateFieldProps = {
+  control: Control<SimulationInput>;
+  name: FieldPath<SimulationInput>;
+  label: string;
+  compact?: boolean;
+  disabled?: boolean;
+};
+
+function DateField({ control, name, label, compact = false, disabled = false }: DateFieldProps) {
+  const { field, fieldState } = useController({ control, name });
+  const value = typeof field.value === "string" ? field.value : "";
+  const [text, setText] = useState<string>(formatIsoToDisplay(value));
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState<Date>(parseIsoDate(value) ?? new Date(2000, 0, 1));
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const parsed = parseIsoDate(value);
+    if (parsed) {
+      setText(formatIsoToDisplay(value));
+      setMonth(parsed);
+      return;
+    }
+
+    setText(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) {
+        return;
+      }
+
+      const rect = anchor.getBoundingClientRect();
+      const maxWidth = 320;
+      const margin = 12;
+      const nextLeft = Math.min(
+        Math.max(rect.left, margin),
+        Math.max(margin, window.innerWidth - maxWidth - margin)
+      );
+
+      setPopoverPosition({
+        top: rect.bottom + 8,
+        left: nextLeft
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target) || popoverRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [open]);
+
+  const onInputChange = (raw: string) => {
+    const normalized = normalizeDisplayDate(raw);
+    setText(normalized);
+
+    if (normalized.length === 10) {
+      const iso = displayToIso(normalized);
+      field.onChange(iso ?? normalized);
+      if (iso) {
+        const parsed = parseIsoDate(iso);
+        if (parsed) {
+          setMonth(parsed);
+        }
+      }
+      return;
+    }
+
+    field.onChange(normalized);
+  };
+
+  const selectedDate = parseIsoDate(value);
+  const hasRegexError = fieldState.error?.message?.includes("YYYY-MM-DD") ?? false;
+  const errorMessage = hasRegexError
+    ? "Ingresá una fecha válida en formato DD/MM/AAAA"
+    : fieldState.error?.message;
+
+  return (
+    <label className={`cms-field cms-date-field ${compact ? "compact" : ""}`}>
+      <span className={compact ? "sr-only" : ""}>{label}</span>
+      <div className="cms-date-inputs" ref={anchorRef}>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="DD/MM/AAAA"
+          value={text}
+          onChange={(event) => onInputChange(event.target.value)}
+          disabled={disabled}
+          maxLength={10}
+        />
+        <button
+          type="button"
+          className="cms-btn cms-btn-soft cms-date-trigger"
+          onClick={() => setOpen((prev) => !prev)}
+          disabled={disabled}
+          aria-label={`Abrir calendario de ${label}`}
+        >
+          Calendario
+        </button>
+      </div>
+
+      {open &&
+        createPortal(
+          <div
+            className="cms-date-popover"
+            ref={popoverRef}
+            style={{ top: `${popoverPosition.top}px`, left: `${popoverPosition.left}px` }}
+          >
+            <DayPicker
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => {
+                if (!date) {
+                  return;
+                }
+
+                const iso = formatIsoDate(date);
+                field.onChange(iso);
+                setOpen(false);
+              }}
+              month={month}
+              onMonthChange={setMonth}
+              captionLayout="dropdown"
+              navLayout="after"
+              fromYear={1900}
+              toYear={2099}
+              showOutsideDays
+              fixedWeeks
+            />
+          </div>,
+          document.body
+        )}
+
+      {errorMessage && <span className="cms-field-error">{errorMessage}</span>}
+    </label>
+  );
+}
 
 export default function HomePage() {
   const [step, setStep] = useState(0);
-  const [input, setInput] = useState<SimulationInput>(defaultSimulationInput);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    control,
+    register,
+    watch,
+    reset,
+    trigger,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<SimulationInput>({
+    resolver: zodResolver(simulationInputSchema),
+    defaultValues: defaultSimulationInput,
+    mode: "onChange"
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "beneficiaries"
+  });
+
+  const beneficiaries = watch("beneficiaries");
+  const calculationDate = watch("calculationDate");
+
   const counts = useMemo(() => {
-    const titulares = input.beneficiaries.filter((item) => item.type === "T").length;
-    const spouses = input.beneficiaries.filter((item) => item.type === "C").length;
-    const children = input.beneficiaries.filter((item) => item.type === "H").length;
+    const list = beneficiaries ?? [];
+    const titulares = list.filter((item) => item.type === "T").length;
+    const spouses = list.filter((item) => item.type === "C").length;
+    const children = list.filter((item) => item.type === "H").length;
 
     return {
       titulares,
       spouses,
       children,
-      n: input.beneficiaries.length
+      n: list.length
     };
-  }, [input.beneficiaries]);
+  }, [beneficiaries]);
 
   const hasBlockingTitular = counts.titulares > 1;
 
-  const onSimulation = async () => {
+  const runSimulation = handleSubmit(async (formValues) => {
     setLoading(true);
     setError(null);
 
@@ -101,7 +320,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(input)
+        body: JSON.stringify(formValues)
       });
 
       const payload = await response.json();
@@ -112,16 +331,16 @@ export default function HomePage() {
       }
 
       setResult(payload as SimulationResult);
-      setStep(4);
+      setStep(3);
     } catch {
       setResult(null);
       setError("No fue posible ejecutar la simulación. Intentá nuevamente.");
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const onDownloadPdf = async () => {
+  const onDownloadPdf = handleSubmit(async (formValues) => {
     if (!result) {
       return;
     }
@@ -135,7 +354,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ input, result })
+        body: JSON.stringify({ input: formValues, result })
       });
 
       if (!response.ok) {
@@ -158,41 +377,69 @@ export default function HomePage() {
     } finally {
       setDownloadingPdf(false);
     }
-  };
-
-  const updateBeneficiary = (index: number, patch: Partial<BeneficiaryInput>): void => {
-    setInput((prev) => {
-      const next = prev.beneficiaries.map((beneficiary, currentIndex) =>
-        currentIndex === index ? { ...beneficiary, ...patch } : beneficiary
-      );
-      return { ...prev, beneficiaries: next };
-    });
-  };
+  });
 
   const addBeneficiary = (): void => {
-    if (input.beneficiaries.length >= 56) {
+    if (fields.length >= 56) {
       return;
     }
 
-    setInput((prev) => ({
-      ...prev,
-      beneficiaries: [
-        ...prev.beneficiaries,
-        {
-          type: "H",
-          sex: 1,
-          birthDate: "2000-01-01",
-          invalid: 0
-        }
-      ]
-    }));
+    append(newBeneficiary);
   };
 
-  const removeBeneficiary = (index: number): void => {
-    setInput((prev) => ({
-      ...prev,
-      beneficiaries: prev.beneficiaries.filter((_, currentIndex) => currentIndex !== index)
-    }));
+  const canProceedSync = (): boolean => {
+    if (step === 0) {
+      const allBirthDatesValid = (beneficiaries ?? []).every((item) => Boolean(parseIsoDate(item.birthDate)));
+      return !hasBlockingTitular && counts.n <= 12 && allBirthDatesValid;
+    }
+
+    if (step === 1) {
+      return Boolean(parseIsoDate(calculationDate ?? ""));
+    }
+
+    return true;
+  };
+
+  const validateCurrentStep = async (): Promise<boolean> => {
+    if (step === 0) {
+      const valid = await trigger("beneficiaries");
+      return valid && !hasBlockingTitular && counts.n <= 12;
+    }
+
+    if (step === 1) {
+      return trigger([
+        "calculationDate",
+        "accountBalance",
+        "mandatoryContribution.startAge",
+        "mandatoryContribution.endAge",
+        "voluntaryContribution.startAge",
+        "voluntaryContribution.endAge",
+        "voluntaryContribution.monthlyAmount"
+      ]);
+    }
+
+    if (step === 2) {
+      return trigger(["bov"]);
+    }
+
+    return true;
+  };
+
+  const goNext = async (): Promise<void> => {
+    if (step >= steps.length - 1) {
+      return;
+    }
+
+    const valid = await validateCurrentStep();
+    if (valid) {
+      setStep((prev) => prev + 1);
+    }
+  };
+
+  const goPrev = (): void => {
+    if (step > 0) {
+      setStep((prev) => prev - 1);
+    }
   };
 
   return (
@@ -227,50 +474,6 @@ export default function HomePage() {
         <section className="cms-panel">
           {step === 0 && (
             <>
-              <h2>Contexto</h2>
-              <p>
-                Esta pantalla reúne los componentes principales de una simulación previsional y permite avanzar de forma
-                guiada, con datos claros y resultados listos para compartir.
-              </p>
-
-              <div className="cms-service-grid">
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <CircleDollarSign size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Proyección de beneficio</h3>
-                  <span className="cms-tag">CALCULO ESTIMADO</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <UsersRound size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Grupo familiar</h3>
-                  <span className="cms-tag">DATOS DE TITULAR Y BENEFICIARIOS</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <BadgePercent size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Aportes y parámetros</h3>
-                  <span className="cms-tag">CONFIGURACION PERSONALIZADA</span>
-                </article>
-
-                <article className="cms-service-card">
-                  <div className="cms-service-icon">
-                    <FileText size={18} strokeWidth={1.5} />
-                  </div>
-                  <h3>Reporte descargable</h3>
-                  <span className="cms-tag">PDF RESUMIDO</span>
-                </article>
-              </div>
-            </>
-          )}
-
-          {step === 1 && (
-            <>
               <h2>Grupo familiar</h2>
               <p>
                 Definí titulares, cónyuges y/o hijos con su información básica. Estos datos impactan directamente en la
@@ -290,18 +493,11 @@ export default function HomePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {input.beneficiaries.map((beneficiary, index) => (
-                      <tr key={`${beneficiary.birthDate}-${index}`}>
+                    {fields.map((fieldItem, index) => (
+                      <tr key={fieldItem.id}>
                         <td>{index + 1}</td>
                         <td>
-                          <select
-                            value={beneficiary.type}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                type: event.target.value as BeneficiaryInput["type"]
-                              })
-                            }
-                          >
+                          <select {...register(`beneficiaries.${index}.type`)}>
                             <option value="T">T (Titular)</option>
                             <option value="C">C (Cónyuge/conviviente)</option>
                             <option value="H">H (Hijo)</option>
@@ -309,36 +505,27 @@ export default function HomePage() {
                         </td>
                         <td>
                           <select
-                            value={beneficiary.sex}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                sex: Number(event.target.value) as BeneficiaryInput["sex"]
-                              })
-                            }
+                            {...register(`beneficiaries.${index}.sex`, {
+                              setValueAs: (value) => Number(value) as 1 | 2
+                            })}
                           >
                             <option value={1}>1 (M)</option>
                             <option value={2}>2 (F)</option>
                           </select>
                         </td>
-                        <td>
-                          <input
-                            type="date"
-                            value={beneficiary.birthDate}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                birthDate: event.target.value
-                              })
-                            }
+                        <td className="cms-date-cell">
+                          <DateField
+                            control={control}
+                            name={`beneficiaries.${index}.birthDate` as const}
+                            label="Fecha nacimiento"
+                            compact
                           />
                         </td>
                         <td>
                           <select
-                            value={beneficiary.invalid}
-                            onChange={(event) =>
-                              updateBeneficiary(index, {
-                                invalid: Number(event.target.value) as BeneficiaryInput["invalid"]
-                              })
-                            }
+                            {...register(`beneficiaries.${index}.invalid`, {
+                              setValueAs: (value) => Number(value) as 0 | 1
+                            })}
                           >
                             <option value={0}>0 (No)</option>
                             <option value={1}>1 (Sí)</option>
@@ -348,8 +535,8 @@ export default function HomePage() {
                           <button
                             type="button"
                             className="cms-btn cms-btn-danger"
-                            onClick={() => removeBeneficiary(index)}
-                            disabled={input.beneficiaries.length <= 1}
+                            onClick={() => remove(index)}
+                            disabled={fields.length <= 1}
                           >
                             Quitar
                           </button>
@@ -367,7 +554,11 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="cms-btn cms-btn-soft"
-                  onClick={() => setInput(defaultSimulationInput)}
+                  onClick={() => {
+                    reset(defaultSimulationInput);
+                    setResult(null);
+                    setError(null);
+                  }}
                 >
                   Restaurar datos iniciales
                 </button>
@@ -379,159 +570,129 @@ export default function HomePage() {
                 </span>
               </div>
 
-              {hasBlockingTitular && (
-                <div className="cms-status error">Solo se permite un titular (T).</div>
+              {hasBlockingTitular && <div className="cms-status error">Solo se permite un titular (T).</div>}
+              {typeof errors.beneficiaries?.message === "string" && (
+                <div className="cms-status error">{errors.beneficiaries.message}</div>
               )}
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <h2>Fechas y aportes</h2>
+              <p>Completá fecha de cálculo, saldo de cuenta y el tramo de aportes para personalizar la proyección.</p>
+
+              <div className="cms-form-grid">
+                <DateField control={control} name="calculationDate" label="Fecha de cálculo" />
+
+                <label className="cms-field">
+                  Saldo de cuenta
+                  <input
+                    type="number"
+                    {...register("accountBalance", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.accountBalance?.message && (
+                    <span className="cms-field-error">{errors.accountBalance.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes obligatorios - Edad inicio
+                  <input
+                    type="number"
+                    {...register("mandatoryContribution.startAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.mandatoryContribution?.startAge?.message && (
+                    <span className="cms-field-error">{errors.mandatoryContribution.startAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes obligatorios - Edad fin
+                  <input
+                    type="number"
+                    {...register("mandatoryContribution.endAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.mandatoryContribution?.endAge?.message && (
+                    <span className="cms-field-error">{errors.mandatoryContribution.endAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes voluntarios - Edad inicio
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.startAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.startAge?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.startAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Aportes voluntarios - Edad fin
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.endAge", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.endAge?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.endAge.message}</span>
+                  )}
+                </label>
+
+                <label className="cms-field">
+                  Importe mensual aportes voluntarios
+                  <input
+                    type="number"
+                    {...register("voluntaryContribution.monthlyAmount", {
+                      valueAsNumber: true
+                    })}
+                  />
+                  {errors.voluntaryContribution?.monthlyAmount?.message && (
+                    <span className="cms-field-error">{errors.voluntaryContribution.monthlyAmount.message}</span>
+                  )}
+                </label>
+              </div>
             </>
           )}
 
           {step === 2 && (
             <>
-              <h2>Fechas y aportes</h2>
-              <p>
-                Completá fecha de cálculo, saldo de cuenta y el tramo de aportes para personalizar la proyección.
-              </p>
-
-              <div className="cms-form-grid">
-                <label className="cms-field">
-                  Fecha de cálculo
-                  <input
-                    type="date"
-                    value={input.calculationDate}
-                    onChange={(event) =>
-                      setInput((prev) => ({ ...prev, calculationDate: event.target.value }))
-                    }
-                  />
-                </label>
-
-                  <label className="cms-field">
-                    Saldo de cuenta
-                    <input
-                      type="number"
-                      value={input.accountBalance}
-                      onChange={(event) =>
-                        setInput((prev) => ({ ...prev, accountBalance: Number(event.target.value) }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes obligatorios - Edad inicio
-                    <input
-                      type="number"
-                      value={input.mandatoryContribution.startAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          mandatoryContribution: {
-                            ...prev.mandatoryContribution,
-                            startAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes obligatorios - Edad fin
-                    <input
-                      type="number"
-                      value={input.mandatoryContribution.endAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          mandatoryContribution: {
-                            ...prev.mandatoryContribution,
-                            endAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes voluntarios - Edad inicio
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.startAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            startAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Aportes voluntarios - Edad fin
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.endAge}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            endAge: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cms-field">
-                    Importe mensual aportes voluntarios
-                    <input
-                      type="number"
-                      value={input.voluntaryContribution.monthlyAmount}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          voluntaryContribution: {
-                            ...prev.voluntaryContribution,
-                            monthlyAmount: Number(event.target.value)
-                          }
-                        }))
-                      }
-                    />
-                  </label>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
               <h2>Parámetros</h2>
-              <p>
-                Ajustá el valor de referencia del objetivo para obtener una estimación alineada a tu escenario.
-              </p>
+              <p>Ajustá el valor de referencia del objetivo para obtener una estimación alineada a tu escenario.</p>
 
               <div className="cms-form-grid">
                 <label className="cms-field">
                   BOV
                   <input
                     type="number"
-                    value={input.bov}
-                    onChange={(event) =>
-                      setInput((prev) => ({ ...prev, bov: Number(event.target.value) }))
-                    }
+                    {...register("bov", {
+                      valueAsNumber: true
+                    })}
                   />
+                  {errors.bov?.message && <span className="cms-field-error">{errors.bov.message}</span>}
                 </label>
 
-                  <article className="cms-info-card">
-                    <h3>Base técnica activa</h3>
-                    <p>La simulación utiliza parámetros vigentes para proyectar resultados de forma consistente.</p>
-                    <span className="cms-tag">VERSION 2025</span>
-                  </article>
+                <article className="cms-info-card">
+                  <h3>Base técnica activa</h3>
+                  <p>La simulación utiliza parámetros vigentes para proyectar resultados de forma consistente.</p>
+                  <span className="cms-tag">VERSION 2025</span>
+                </article>
               </div>
             </>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <>
               <h2>Resultados</h2>
               <p>Ejecutá la simulación y revisá los indicadores clave del escenario configurado.</p>
@@ -541,19 +702,19 @@ export default function HomePage() {
                   type="button"
                   className="cms-btn cms-btn-main"
                   disabled={loading || hasBlockingTitular || counts.n > 12}
-                  onClick={() => void onSimulation()}
+                  onClick={() => void runSimulation()}
                 >
                   {loading ? "Calculando..." : "Ejecutar simulación"}
                 </button>
 
-                  <button
-                    type="button"
-                    className="cms-btn cms-btn-secondary"
-                    disabled={!result || downloadingPdf}
-                    onClick={() => void onDownloadPdf()}
-                  >
-                    {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
-                  </button>
+                <button
+                  type="button"
+                  className="cms-btn cms-btn-secondary"
+                  disabled={!result || downloadingPdf}
+                  onClick={() => void onDownloadPdf()}
+                >
+                  {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
+                </button>
               </div>
 
               {counts.n > 12 && (
@@ -572,10 +733,6 @@ export default function HomePage() {
                       <strong>{formatNumber(result.ppuu)}</strong>
                     </article>
                     <article className="cms-metric-card">
-                      <span>Saldo final</span>
-                      <strong>{formatCurrency(result.finalBalance)}</strong>
-                    </article>
-                    <article className="cms-metric-card">
                       <span>Beneficio proyectado</span>
                       <strong>{formatCurrency(result.projectedBenefit)}</strong>
                     </article>
@@ -591,6 +748,20 @@ export default function HomePage() {
               )}
             </>
           )}
+
+          <div className="cms-wizard-nav">
+            <button type="button" className="cms-btn cms-btn-soft" onClick={goPrev} disabled={step === 0}>
+              Anterior
+            </button>
+            <button
+              type="button"
+              className="cms-btn cms-btn-main"
+              onClick={() => void goNext()}
+              disabled={step === steps.length - 1 || !canProceedSync()}
+            >
+              Siguiente
+            </button>
+          </div>
         </section>
       </section>
     </main>
