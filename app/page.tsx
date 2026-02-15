@@ -19,6 +19,19 @@ import type { BeneficiaryInput, SimulationInput, SimulationResult } from "@/lib/
 const steps = ["Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+const resultFaqQuestions = [
+  "¿Cuánto representa el beneficio mensual estimado?",
+  "¿Este valor está en términos actuales o ajusta inflación?",
+  "¿Desde qué fecha empezaría a cobrar?",
+  "¿Qué parte depende de mis datos y qué parte de supuestos técnicos?",
+  "¿Cuánto cambia el resultado si modifico BOV o años de aporte?",
+  "¿Qué efecto tiene aumentar el aporte voluntario mensual?",
+  "¿Cómo impacta mi grupo familiar en el cálculo?",
+  "¿Qué es el PPUU y por qué aparece en el resultado?",
+  "¿Qué tan confiable es este resultado?",
+  "¿Estoy por encima o por debajo de mi objetivo?"
+] as const;
+
 const newBeneficiary: BeneficiaryInput = {
   type: "H",
   sex: 1,
@@ -302,6 +315,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
+  const [isTraceOpen, setIsTraceOpen] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const showFaq = false;
   const [traceRevealCount, setTraceRevealCount] = useState(0);
   const traceIntervalRef = useRef<number | null>(null);
   const traceCompletionRef = useRef<number | null>(null);
@@ -354,6 +371,157 @@ export default function HomePage() {
   const retirementPreview = useMemo(
     () => estimateRetirementDate(beneficiaries, calculationDate) ?? "pendiente",
     [beneficiaries, calculationDate]
+  );
+
+  const voluntaryMonths = useMemo(() => {
+    if (
+      typeof voluntaryStartAge !== "number" ||
+      Number.isNaN(voluntaryStartAge) ||
+      typeof voluntaryEndAge !== "number" ||
+      Number.isNaN(voluntaryEndAge)
+    ) {
+      return 0;
+    }
+
+    const years = Math.max(0, voluntaryEndAge - voluntaryStartAge);
+    return years * 12;
+  }, [voluntaryEndAge, voluntaryStartAge]);
+
+  const voluntaryNominalContribution = useMemo(() => {
+    if (typeof voluntaryMonthlyAmount !== "number" || Number.isNaN(voluntaryMonthlyAmount)) {
+      return 0;
+    }
+
+    return Math.max(0, voluntaryMonthlyAmount) * voluntaryMonths;
+  }, [voluntaryMonthlyAmount, voluntaryMonths]);
+
+  const benefitAnnual = result ? result.projectedBenefit * 12 : 0;
+  const benefitVsBovPct =
+    result && bov > 0 ? (result.projectedBenefit / bov) * 100 : null;
+  const balanceGrowthPct =
+    result && accountBalance > 0 ? ((result.finalBalance - accountBalance) / accountBalance) * 100 : null;
+
+  const resultFaqItems = useMemo(
+    () => [
+      {
+        question: resultFaqQuestions[0],
+        answer: (
+          <>
+            Es el monto mensual estimado para tu jubilación. En este escenario, el valor es{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} por mes, que
+            equivale a {tracePill(result ? formatCurrency(benefitAnnual) : "pendiente", "calc")} por año (12 meses).
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[1],
+        answer: (
+          <>
+            Está expresado con las bases técnicas vigentes y su actualización operativa se refleja con la distribución
+            cuatrimestral de la rentabilidad de los rendimientos de la Caja. Ejemplo simple: si la inflación anual
+            fuera {tracePill("60%", "param")}, mantener poder de compra requeriría subir de{" "}
+            {tracePill("$100.000", "result")} a {tracePill("$160.000", "result")} en 12 meses.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[2],
+        answer: (
+          <>
+            El cobro se proyecta desde la fecha de jubilación estimada:{" "}
+            {tracePill(result?.retirementDate ?? retirementPreview, "result")}. Esa fecha surge al comparar fecha de
+            cálculo vs. cumplimiento de 65 años.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[3],
+        answer: (
+          <>
+            Tus datos (edades, grupo, aportes, saldo y BOV) definen el escenario. Las bases técnicas aplican la
+            transformación actuarial. En este caso usamos {tracePill(`${counts.n} personas`, "param")},{" "}
+            {tracePill("tasa 4%", "param")} y tablas vigentes para llegar al resultado.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[4],
+        answer: (
+          <>
+            Regla práctica: subir BOV o extender años de aporte tiende a subir el beneficio. Hoy tenés{" "}
+            {tracePill(`BOV ${formatCurrency(bov || 0)}`, "param")} y un beneficio estimado de{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")}. Si aumentás BOV en{" "}
+            {tracePill("10%", "calc")}, esperá un impacto positivo al recalcular.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[5],
+        answer: (
+          <>
+            El aporte voluntario suma capital antes del retiro. Con tu configuración actual serían{" "}
+            {tracePill(`${formatNumber(voluntaryMonths)} meses`, "param")} x{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "param")} ={" "}
+            {tracePill(formatCurrency(voluntaryNominalContribution), "result")} nominales (sin rendimiento). A mayor
+            aporte mensual, mayor beneficio esperado.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[6],
+        answer: (
+          <>
+            El grupo familiar modifica cobertura y probabilidades actuariales. Hoy el escenario tiene{" "}
+            {tracePill(`${counts.spouses} cónyuge(s)`, "param")} y {tracePill(`${counts.children} hijo(s)`, "param")}.
+            Si agregás beneficiarios, el PPUU puede subir o bajar según composición y edades.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[7],
+        answer: (
+          <>
+            El PPUU es el divisor actuarial del saldo. En este caso: {tracePill(formatNumber(result?.ppuu ?? 0), "param")}{" "}
+            y la relación es {tracePill("beneficio = saldo final / PPUU", "calc")}. Si el PPUU sube, el beneficio
+            mensual tiende a bajar; si baja, el beneficio tiende a subir.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[8],
+        answer: (
+          <>
+            Es una proyección técnica útil para comparar escenarios, no una promesa de cobro exacto. Tomala como guía
+            de decisión: hoy el resultado refleja tus datos actuales y{" "}
+            {tracePill(`${result?.trace.warnings.length ?? 0} advertencias`, "param")}.
+          </>
+        )
+      },
+      {
+        question: resultFaqQuestions[9],
+        answer: (
+          <>
+            Compará beneficio proyectado contra tu objetivo mensual (BOV). Escenario actual: beneficio{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} vs BOV{" "}
+            {tracePill(formatCurrency(bov || 0), "param")}. Cobertura aproximada:{" "}
+            {tracePill(benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente", "calc")}.
+          </>
+        )
+      }
+    ],
+    [
+      benefitAnnual,
+      benefitVsBovPct,
+      bov,
+      counts.children,
+      counts.n,
+      counts.spouses,
+      result,
+      retirementPreview,
+      voluntaryMonthlyAmount,
+      voluntaryMonths,
+      voluntaryNominalContribution
+    ]
   );
 
   const traceSteps = useMemo<TraceStep[]>(
@@ -466,13 +634,16 @@ export default function HomePage() {
         formula: (
           <>
             Proyectamos el saldo acumulando al retiro, sumando el componente por BOV y el efecto de aportes voluntarios
-            según rango configurado.
+            según rango configurado. Referencia rápida: {tracePill(`${formatNumber(voluntaryMonths)} meses`, "calc")} x{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "calc")} ={" "}
+            {tracePill(formatCurrency(voluntaryNominalContribution), "calc")} nominales.
           </>
         ),
         outcome: result
           ? (
             <>
-              Saldo final interno: {tracePill(formatCurrency(result.finalBalance), "result")}.
+              Saldo final interno: {tracePill(formatCurrency(result.finalBalance), "result")}. Variación vs saldo
+              actual: {tracePill(balanceGrowthPct !== null ? formatPercent(balanceGrowthPct) : "sin referencia", "result")}.
             </>
             )
           : (
@@ -531,6 +702,7 @@ export default function HomePage() {
     ],
     [
       accountBalance,
+      balanceGrowthPct,
       beneficiaries,
       bov,
       calculationDate,
@@ -543,6 +715,8 @@ export default function HomePage() {
       retirementPreview,
       voluntaryEndAge,
       voluntaryMonthlyAmount,
+      voluntaryNominalContribution,
+      voluntaryMonths,
       voluntaryStartAge
     ]
   );
@@ -749,16 +923,21 @@ export default function HomePage() {
     <main className="cms-shell">
       <section className="cms-main-surface">
         <header className="cms-main-header">
-          <h1>Simulador Previsional</h1>
-          <p>Cargá datos del grupo, configurá aportes y obtené una proyección clara para la toma de decisiones.</p>
-          <a
-            href="bases-tecnicas-2025.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cms-btn-bases"
-          >
-            Ver Bases Técnicas
-          </a>
+          <div className="cms-header-copy">
+            <h1>Simulador Previsional</h1>
+            <p>Cargá datos del grupo, configurá aportes y obtené una proyección clara para la toma de decisiones.</p>
+            <a
+              href="bases-tecnicas-2025.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cms-btn-bases"
+            >
+              Ver Bases Técnicas
+            </a>
+          </div>
+          <div className="cms-header-logo-wrap" aria-hidden="true">
+            <img src="/cps-logo.svg" alt="CPS PCEER" className="cms-header-logo" />
+          </div>
         </header>
 
         <nav className="cms-step-nav" aria-label="Navegación de pasos">
@@ -1003,13 +1182,18 @@ export default function HomePage() {
               <div className="cms-results-layout">
                 <section className="cms-results-column">
                   <div className="cms-results-compact">
-                    <div className="cms-actions-row">
+                    <div className="cms-actions-row cms-results-actions">
                       <button
                         type="button"
-                        className="cms-btn cms-btn-main"
+                        className="cms-btn cms-btn-main cms-btn-run"
                         disabled={loading || hasBlockingTitular || counts.n > 12}
                         onClick={() => void runSimulation()}
                       >
+                        <span className="cms-btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 20 20" focusable="false">
+                            <path d="M6 4L16 10L6 16V4Z" />
+                          </svg>
+                        </span>
                         {loading ? "Calculando..." : "Ejecutar simulación"}
                       </button>
 
@@ -1019,6 +1203,14 @@ export default function HomePage() {
                         disabled={!result || downloadingPdf}
                         onClick={() => void onDownloadPdf()}
                       >
+                        <span className="cms-btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 20 20" focusable="false">
+                            <path d="M12 2H6C4.9 2 4 2.9 4 4V16C4 17.1 4.9 18 6 18H14C15.1 18 16 17.1 16 16V6L12 2Z" />
+                            <path d="M12 2V6H16" />
+                            <path d="M7.5 11H12.5" />
+                            <path d="M7.5 14H11.5" />
+                          </svg>
+                        </span>
                         {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
                       </button>
                     </div>
@@ -1030,59 +1222,116 @@ export default function HomePage() {
                             <span>PPUU Acumulados</span>
                             <strong>{formatNumber(result.ppuu)}</strong>
                           </article>
-                          <article className="cms-kpi-item">
+                          <article className="cms-kpi-item cms-kpi-item-primary">
                             <span>Beneficio Mensual Proyectado</span>
                             <strong>{formatCurrency(result.projectedBenefit)}</strong>
+                            <small>
+                              Resultado principal · Cobertura vs BOV:{" "}
+                              {benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente"}
+                            </small>
                           </article>
                         </div>
 
-                        <div className="cms-inline-note">
-                          <span>Fecha de jubilación: {result.retirementDate}</span>
-                          <span>
+                        <div className="cms-info-chips">
+                          <span className="cms-chip">Fecha de jubilación: {result.retirementDate}</span>
+                          <span className="cms-chip">
                             Grupo: {result.counts.n} personas ({result.counts.spouses} cónyuges, {result.counts.children} hijos)
                           </span>
                         </div>
                       </>
                     ) : (
-                      <div className="cms-inline-note">
-                        <span>Sin resultados todavía.</span>
-                        <span>Ejecutá la simulación para generar la proyección mensual estimada.</span>
+                      <div className="cms-info-chips">
+                        <span className="cms-chip">Sin resultados todavía.</span>
+                        <span className="cms-chip">Ejecutá la simulación para generar la proyección mensual estimada.</span>
                       </div>
                     )}
                   </div>
                 </section>
 
                 <aside className="cms-trace-column">
-                  <h3>Bitácora del cálculo</h3>
-                  <ol className="cms-trace-list">
-                    {traceSteps.map((traceStep, index) => {
-                      const isVisible = index < traceRevealCount;
-                      const isActive = loading && index === traceRevealCount - 1;
-                      return (
-                        <li
-                          key={traceStep.title}
-                          className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
-                        >
-                          <span className="cms-trace-number">{index + 1}.</span>
-                          <div className="cms-trace-body">
-                            <p className="cms-trace-title">{traceStep.title}</p>
-                            <p>
-                              <strong>Parámetros:</strong> {traceStep.parameters}
-                            </p>
-                            <p>
-                              <strong>Fórmula / regla:</strong> {traceStep.formula}
-                            </p>
-                            <p>
-                              <strong>Resultado:</strong> {traceStep.outcome}
-                            </p>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                  <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
+                  <div className="cms-trace-head">
+                    <h3>Bitácora del cálculo</h3>
+                    <button
+                      type="button"
+                      className="cms-section-chip-toggle"
+                      aria-expanded={isTraceOpen}
+                      onClick={() => setIsTraceOpen((prev) => !prev)}
+                    >
+                      {isTraceOpen ? "Ocultar detalle" : "Ver detalle del cálculo"}
+                    </button>
+                  </div>
+                  {isTraceOpen && (
+                    <>
+                      <ol className="cms-trace-list">
+                        {traceSteps.map((traceStep, index) => {
+                          const isVisible = index < traceRevealCount;
+                          const isActive = loading && index === traceRevealCount - 1;
+                          return (
+                            <li
+                              key={traceStep.title}
+                              className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
+                            >
+                              <span className="cms-trace-number">{index + 1}.</span>
+                              <div className="cms-trace-body">
+                                <p className="cms-trace-title">{traceStep.title}</p>
+                                <p>
+                                  <strong>Parámetros:</strong> {traceStep.parameters}
+                                </p>
+                                <p>
+                                  <strong>Fórmula / regla:</strong> {traceStep.formula}
+                                </p>
+                                <p>
+                                  <strong>Resultado:</strong> {traceStep.outcome}
+                                </p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
+                    </>
+                  )}
                 </aside>
               </div>
+              {showFaq && (
+                <article className="cms-faq-card cms-faq-standalone">
+                  <button
+                    type="button"
+                    className="cms-section-chip-toggle cms-section-chip-toggle-wide"
+                    aria-expanded={isFaqOpen}
+                    onClick={() => setIsFaqOpen((prev) => !prev)}
+                  >
+                    {isFaqOpen ? "Ocultar preguntas frecuentes" : "Preguntas frecuentes sobre el resultado"}
+                  </button>
+                  {isFaqOpen && (
+                    <div className="cms-faq-list">
+                      {resultFaqItems.map((item, index) => {
+                        const isOpen = openFaqIndex === index;
+                        return (
+                          <div key={item.question} className={`cms-faq-item ${isOpen ? "open" : ""}`}>
+                            <button
+                              type="button"
+                              className="cms-faq-trigger"
+                              aria-expanded={isOpen}
+                              onClick={() => setOpenFaqIndex((prev) => (prev === index ? null : index))}
+                            >
+                              <span>{item.question}</span>
+                              <span className="cms-faq-chevron" aria-hidden="true">
+                                ▾
+                              </span>
+                            </button>
+                            <div className="cms-faq-panel">
+                              <div className="cms-faq-content">
+                                <p>{item.answer}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </article>
+              )}
 
               {counts.n > 12 && (
                 <div className="cms-status error">
@@ -1135,4 +1384,10 @@ function formatCurrency(value: number): string {
     currency: "ARS",
     maximumFractionDigits: 0
   }).format(value);
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("es-AR", {
+    maximumFractionDigits: 1
+  }).format(value) + "%";
 }
