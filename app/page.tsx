@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useController,
   useFieldArray,
@@ -94,6 +94,37 @@ function displayToIso(display: string): string | null {
   return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day
     .toString()
     .padStart(2, "0")}`;
+}
+
+function estimateRetirementDate(
+  beneficiaries: BeneficiaryInput[] | undefined,
+  calculationDate: string
+): string | null {
+  if (!beneficiaries?.length) {
+    return null;
+  }
+
+  const anchor = beneficiaries.find((item) => item.type === "T") ?? beneficiaries[0];
+  const birth = parseIsoDate(anchor.birthDate);
+  const calc = parseIsoDate(calculationDate);
+
+  if (!birth || !calc) {
+    return null;
+  }
+
+  const candidate = new Date(birth.getFullYear() + 65, birth.getMonth(), birth.getDate());
+  return formatIsoDate(candidate > calc ? candidate : calc);
+}
+
+type TraceStep = {
+  title: string;
+  parameters: ReactNode;
+  formula: ReactNode;
+  outcome: ReactNode;
+};
+
+function tracePill(value: string, tone: "param" | "calc" | "result"): ReactNode {
+  return <span className={`cms-pill cms-pill-${tone}`}>{value}</span>;
 }
 
 type DateFieldProps = {
@@ -271,6 +302,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [traceRevealCount, setTraceRevealCount] = useState(0);
+  const traceIntervalRef = useRef<number | null>(null);
+  const traceCompletionRef = useRef<number | null>(null);
 
   const {
     control,
@@ -293,6 +327,13 @@ export default function HomePage() {
 
   const beneficiaries = watch("beneficiaries");
   const calculationDate = watch("calculationDate");
+  const mandatoryStartAge = watch("mandatoryContribution.startAge");
+  const mandatoryEndAge = watch("mandatoryContribution.endAge");
+  const voluntaryStartAge = watch("voluntaryContribution.startAge");
+  const voluntaryEndAge = watch("voluntaryContribution.endAge");
+  const voluntaryMonthlyAmount = watch("voluntaryContribution.monthlyAmount");
+  const accountBalance = watch("accountBalance");
+  const bov = watch("bov");
 
   const counts = useMemo(() => {
     const list = beneficiaries ?? [];
@@ -310,9 +351,271 @@ export default function HomePage() {
 
   const hasBlockingTitular = counts.titulares > 1;
 
+  const retirementPreview = useMemo(
+    () => estimateRetirementDate(beneficiaries, calculationDate) ?? "pendiente",
+    [beneficiaries, calculationDate]
+  );
+
+  const traceSteps = useMemo<TraceStep[]>(
+    () => [
+      {
+        title: "Validación de entrada",
+        parameters: (
+          <>
+            Revisamos {tracePill(`${counts.n} personas`, "param")},{" "}
+            {tracePill(`${counts.titulares} titular(es)`, "param")} y la fecha de cálculo{" "}
+            {tracePill(calculationDate || "sin dato", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Comprobamos en lenguaje de negocio que haya como máximo un titular, que las fechas sean válidas y que el
+            grupo no supere {tracePill("12 personas", "calc")} para la corrida exacta.
+          </>
+        ),
+        outcome: hasBlockingTitular
+          ? (
+            <>
+              Detectamos {tracePill("más de un titular", "result")}. El cálculo queda bloqueado hasta corregirlo.
+            </>
+            )
+          : (
+            <>La entrada queda {tracePill("lista para simular", "result")}.</>
+            )
+      },
+      {
+        title: "Fecha objetivo de jubilación",
+        parameters: (
+          <>
+            Partimos de nacimiento titular{" "}
+            {tracePill(beneficiaries?.find((b) => b.type === "T")?.birthDate ?? "sin titular", "param")} y fecha de
+            cálculo {tracePill(calculationDate || "sin dato", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Elegimos la fecha más tardía entre la fecha de cálculo y la fecha en la que el titular cumple{" "}
+            {tracePill("65 años", "calc")}.
+          </>
+        ),
+        outcome: (
+          <>
+            Fecha de jubilación estimada: {tracePill(result?.retirementDate ?? retirementPreview, "result")}.
+          </>
+        )
+      },
+      {
+        title: "Edades técnicas en meses",
+        parameters: (
+          <>
+            Calculamos para {tracePill(`${counts.n} beneficiarios`, "param")} usando la fecha de jubilación{" "}
+            {tracePill(result?.retirementDate ?? retirementPreview, "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Convertimos cada edad a meses con diferencia exacta de años, meses y días para alinear con las tablas
+            técnicas.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Edades en meses obtenidas: {tracePill(result.agesInMonths.join(", "), "result")}.
+            </>
+            )
+          : (
+            <>Las edades en meses se completan cuando se ejecuta la simulación.</>
+            )
+      },
+      {
+        title: "Cálculo actuarial de PPUU",
+        parameters: (
+          <>
+            Usamos {tracePill(`n=${counts.n}`, "param")}, {tracePill(`xmin=${result?.trace.xmin ?? 187}`, "param")},{" "}
+            {tracePill(`tMax=${result?.trace.tMax ?? 1145}`, "param")} y tasa técnica{" "}
+            {tracePill("4% anual", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Recorremos mes a mes todas las configuraciones posibles del grupo, ponderamos probabilidades y descontamos
+            cada flujo al presente.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              PPUU calculado: {tracePill(formatNumber(result.ppuu), "result")}.
+            </>
+            )
+          : (
+            <>El PPUU se muestra cuando finaliza la corrida.</>
+            )
+      },
+      {
+        title: "Proyección de saldo final",
+        parameters: (
+          <>
+            Tomamos saldo actual {tracePill(formatCurrency(accountBalance || 0), "param")}, BOV{" "}
+            {tracePill(formatCurrency(bov || 0), "param")}, rango voluntario{" "}
+            {tracePill(`${voluntaryStartAge}-${voluntaryEndAge}`, "param")} y aporte mensual{" "}
+            {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Proyectamos el saldo acumulando al retiro, sumando el componente por BOV y el efecto de aportes voluntarios
+            según rango configurado.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Saldo final interno: {tracePill(formatCurrency(result.finalBalance), "result")}.
+            </>
+            )
+          : (
+            <>El saldo final interno queda disponible al terminar el cálculo.</>
+            )
+      },
+      {
+        title: "Beneficio mensual proyectado",
+        parameters: (
+          <>
+            Usamos PPUU {tracePill(result ? formatNumber(result.ppuu) : "pendiente", "param")} y saldo final{" "}
+            {tracePill(result ? formatCurrency(result.finalBalance) : "pendiente", "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Dividimos el saldo final por el PPUU para obtener un valor mensual equivalente y comparable.
+          </>
+        ),
+        outcome: result
+          ? (
+            <>
+              Beneficio proyectado: {tracePill(formatCurrency(result.projectedBenefit), "result")}.
+            </>
+            )
+          : (
+            <>El beneficio se informa cuando termina todo el proceso.</>
+            )
+      },
+      {
+        title: "Control de consistencia",
+        parameters: (
+          <>
+            Revisamos advertencias de traza {tracePill(`${result?.trace.warnings.length ?? 0}`, "param")}.
+          </>
+        ),
+        formula: (
+          <>
+            Si aparece alguna inconsistencia técnica, la registramos explícitamente para que el usuario sepa qué revisar.
+          </>
+        ),
+        outcome: result
+          ? result.trace.warnings.length > 0
+            ? (
+              <>
+                Advertencias detectadas: {tracePill(result.trace.warnings.join(" | "), "result")}.
+              </>
+              )
+            : (
+              <>Estado final: {tracePill("sin advertencias técnicas", "result")}.</>
+              )
+          : (
+            <>El control final se completa cuando finaliza la corrida.</>
+            )
+      }
+    ],
+    [
+      accountBalance,
+      beneficiaries,
+      bov,
+      calculationDate,
+      counts.n,
+      counts.titulares,
+      hasBlockingTitular,
+      mandatoryEndAge,
+      mandatoryStartAge,
+      result,
+      retirementPreview,
+      voluntaryEndAge,
+      voluntaryMonthlyAmount,
+      voluntaryStartAge
+    ]
+  );
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    if (traceIntervalRef.current) {
+      window.clearInterval(traceIntervalRef.current);
+    }
+    if (traceCompletionRef.current) {
+      window.clearTimeout(traceCompletionRef.current);
+    }
+
+    const revealTarget = Math.max(traceSteps.length - 1, 1);
+    let current = 1;
+    setTraceRevealCount(1);
+    traceIntervalRef.current = window.setInterval(() => {
+      current = Math.min(current + 1, revealTarget);
+      setTraceRevealCount(current);
+      if (current >= revealTarget && traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+        traceIntervalRef.current = null;
+      }
+    }, 260);
+
+    return () => {
+      if (traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+        traceIntervalRef.current = null;
+      }
+    };
+  }, [loading, traceSteps.length]);
+
+  useEffect(() => {
+    if (!result) {
+      return;
+    }
+
+    if (traceCompletionRef.current) {
+      window.clearTimeout(traceCompletionRef.current);
+    }
+
+    traceCompletionRef.current = window.setTimeout(() => {
+      setTraceRevealCount(traceSteps.length);
+      traceCompletionRef.current = null;
+    }, 180);
+
+    return () => {
+      if (traceCompletionRef.current) {
+        window.clearTimeout(traceCompletionRef.current);
+        traceCompletionRef.current = null;
+      }
+    };
+  }, [result, traceSteps.length]);
+
+  useEffect(() => {
+    return () => {
+      if (traceIntervalRef.current) {
+        window.clearInterval(traceIntervalRef.current);
+      }
+      if (traceCompletionRef.current) {
+        window.clearTimeout(traceCompletionRef.current);
+      }
+    };
+  }, []);
+
   const runSimulation = handleSubmit(async (formValues) => {
     setLoading(true);
     setError(null);
+    setTraceRevealCount(0);
 
     try {
       const response = await fetch("/api/v1/simulations/run", {
@@ -697,24 +1000,88 @@ export default function HomePage() {
               <h2>Resultados</h2>
               <p>Ejecutá la simulación y revisá los indicadores clave del escenario configurado.</p>
 
-              <div className="cms-actions-row">
-                <button
-                  type="button"
-                  className="cms-btn cms-btn-main"
-                  disabled={loading || hasBlockingTitular || counts.n > 12}
-                  onClick={() => void runSimulation()}
-                >
-                  {loading ? "Calculando..." : "Ejecutar simulación"}
-                </button>
+              <div className="cms-results-layout">
+                <section className="cms-results-column">
+                  <div className="cms-results-compact">
+                    <div className="cms-actions-row">
+                      <button
+                        type="button"
+                        className="cms-btn cms-btn-main"
+                        disabled={loading || hasBlockingTitular || counts.n > 12}
+                        onClick={() => void runSimulation()}
+                      >
+                        {loading ? "Calculando..." : "Ejecutar simulación"}
+                      </button>
 
-                <button
-                  type="button"
-                  className="cms-btn cms-btn-secondary"
-                  disabled={!result || downloadingPdf}
-                  onClick={() => void onDownloadPdf()}
-                >
-                  {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
-                </button>
+                      <button
+                        type="button"
+                        className="cms-btn cms-btn-secondary"
+                        disabled={!result || downloadingPdf}
+                        onClick={() => void onDownloadPdf()}
+                      >
+                        {downloadingPdf ? "Generando PDF..." : "Exportar PDF"}
+                      </button>
+                    </div>
+
+                    {result ? (
+                      <>
+                        <div className="cms-kpi-strip">
+                          <article className="cms-kpi-item">
+                            <span>PPUU Acumulados</span>
+                            <strong>{formatNumber(result.ppuu)}</strong>
+                          </article>
+                          <article className="cms-kpi-item">
+                            <span>Beneficio Mensual Proyectado</span>
+                            <strong>{formatCurrency(result.projectedBenefit)}</strong>
+                          </article>
+                        </div>
+
+                        <div className="cms-inline-note">
+                          <span>Fecha de jubilación: {result.retirementDate}</span>
+                          <span>
+                            Grupo: {result.counts.n} personas ({result.counts.spouses} cónyuges, {result.counts.children} hijos)
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="cms-inline-note">
+                        <span>Sin resultados todavía.</span>
+                        <span>Ejecutá la simulación para generar la proyección mensual estimada.</span>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <aside className="cms-trace-column">
+                  <h3>Bitácora del cálculo</h3>
+                  <ol className="cms-trace-list">
+                    {traceSteps.map((traceStep, index) => {
+                      const isVisible = index < traceRevealCount;
+                      const isActive = loading && index === traceRevealCount - 1;
+                      return (
+                        <li
+                          key={traceStep.title}
+                          className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
+                        >
+                          <span className="cms-trace-number">{index + 1}.</span>
+                          <div className="cms-trace-body">
+                            <p className="cms-trace-title">{traceStep.title}</p>
+                            <p>
+                              <strong>Parámetros:</strong> {traceStep.parameters}
+                            </p>
+                            <p>
+                              <strong>Fórmula / regla:</strong> {traceStep.formula}
+                            </p>
+                            <p>
+                              <strong>Resultado:</strong> {traceStep.outcome}
+                            </p>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
+                </aside>
               </div>
 
               {counts.n > 12 && (
@@ -724,28 +1091,6 @@ export default function HomePage() {
               )}
 
               {error && <div className="cms-status error">{error}</div>}
-
-              {result && (
-                <>
-                  <div className="cms-metric-grid">
-                    <article className="cms-metric-card">
-                      <span>PPUU</span>
-                      <strong>{formatNumber(result.ppuu)}</strong>
-                    </article>
-                    <article className="cms-metric-card">
-                      <span>Beneficio proyectado</span>
-                      <strong>{formatCurrency(result.projectedBenefit)}</strong>
-                    </article>
-                  </div>
-
-                  <div className="cms-inline-note">
-                    <span>Fecha de jubilación: {result.retirementDate}</span>
-                    <span>
-                      Grupo: {result.counts.n} personas ({result.counts.spouses} cónyuges, {result.counts.children} hijos)
-                    </span>
-                  </div>
-                </>
-              )}
             </>
           )}
 
