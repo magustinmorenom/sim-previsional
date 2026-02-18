@@ -19,6 +19,9 @@ import type { BeneficiaryInput, SimulationInput, SimulationResult } from "@/lib/
 
 const steps = ["Grupo familiar", "Edades y aportes", "Parámetros", "Resultados"] as const;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const WHAT_IF_STEP = 100000;
+const WHAT_IF_SCENARIOS = 8;
+const WHAT_IF_TICKS = 5;
 
 const resultFaqQuestions = [
   "¿Cuánto representa el beneficio mensual estimado?",
@@ -155,6 +158,11 @@ type TraceStep = {
   parameters: ReactNode;
   formula: ReactNode;
   outcome: ReactNode;
+};
+
+type WhatIfRow = {
+  monthlyAmount: number;
+  projectedBenefit: number;
 };
 
 function tracePill(value: string, tone: "param" | "calc" | "result"): ReactNode {
@@ -341,6 +349,9 @@ export default function HomePage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const showFaq = false;
   const [traceRevealCount, setTraceRevealCount] = useState(0);
+  const [whatIfRows, setWhatIfRows] = useState<WhatIfRow[]>([]);
+  const [whatIfLoading, setWhatIfLoading] = useState(false);
+  const [whatIfError, setWhatIfError] = useState<string | null>(null);
   const traceIntervalRef = useRef<number | null>(null);
   const traceCompletionRef = useRef<number | null>(null);
   const todayIso = useMemo(() => formatIsoDate(new Date()), []);
@@ -480,6 +491,26 @@ export default function HomePage() {
     result && varValue > 0 ? (result.projectedBenefit / varValue) * 100 : null;
   const balanceGrowthPct =
     result && accountBalance > 0 ? ((result.finalBalance - accountBalance) / accountBalance) * 100 : null;
+  const maxWhatIfBenefit = useMemo(
+    () => whatIfRows.reduce((max, row) => Math.max(max, row.projectedBenefit), 0),
+    [whatIfRows]
+  );
+  const minWhatIfBenefit = useMemo(() => {
+    if (whatIfRows.length === 0) {
+      return 0;
+    }
+
+    return whatIfRows.reduce((min, row) => Math.min(min, row.projectedBenefit), whatIfRows[0].projectedBenefit);
+  }, [whatIfRows]);
+  const [hoveredWhatIfIndex, setHoveredWhatIfIndex] = useState<number | null>(null);
+  const whatIfTickValues = useMemo(() => {
+    if (maxWhatIfBenefit <= 0) {
+      return Array.from({ length: WHAT_IF_TICKS }, () => 0);
+    }
+
+    const step = maxWhatIfBenefit / (WHAT_IF_TICKS - 1);
+    return Array.from({ length: WHAT_IF_TICKS }, (_, index) => maxWhatIfBenefit - index * step);
+  }, [maxWhatIfBenefit]);
 
   const resultFaqItems = useMemo(
     () => [
@@ -864,34 +895,76 @@ export default function HomePage() {
     };
   }, []);
 
+  const requestSimulation = async (input: SimulationInput): Promise<SimulationResult> => {
+    const response = await fetch("/api/v1/simulations/run", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(input)
+    });
+
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const apiError =
+        typeof payload === "object" && payload && "error" in payload
+          ? (payload as { error?: string }).error
+          : undefined;
+      throw new Error(sanitizeUserError(apiError ?? "No fue posible ejecutar la simulación."));
+    }
+
+    return payload as SimulationResult;
+  };
+
+  const buildWhatIfRows = (baseInput: SimulationInput, baseResult: SimulationResult): WhatIfRow[] => {
+    const baseMonthlyAmount =
+      typeof baseInput.voluntaryContribution.monthlyAmount === "number" &&
+      Number.isFinite(baseInput.voluntaryContribution.monthlyAmount)
+        ? Math.max(0, baseInput.voluntaryContribution.monthlyAmount)
+        : 0;
+    const contributionMonths =
+      Math.max(0, baseInput.voluntaryContribution.endAge - baseInput.voluntaryContribution.startAge) * 12;
+    const ppuuSafe = baseResult.ppuu > 0 ? baseResult.ppuu : 1;
+
+    const scenarios = Array.from({ length: WHAT_IF_SCENARIOS }, (_, index) => baseMonthlyAmount + index * WHAT_IF_STEP);
+    return scenarios.map((monthlyAmount) => {
+      const extraContribution = (monthlyAmount - baseMonthlyAmount) * contributionMonths;
+      const estimatedFinalBalance = baseResult.finalBalance + extraContribution;
+      return {
+        monthlyAmount,
+        projectedBenefit: Math.max(0, estimatedFinalBalance / ppuuSafe)
+      };
+    });
+  };
+
   const runSimulation = handleSubmit(async (formValues) => {
     setLoading(true);
     setError(null);
     setTraceRevealCount(0);
+    setWhatIfLoading(true);
+    setWhatIfError(null);
+    setWhatIfRows([]);
+    setHoveredWhatIfIndex(null);
 
     try {
-      const response = await fetch("/api/v1/simulations/run", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formValues)
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        setResult(null);
-        setError(sanitizeUserError(payload.error ?? "No fue posible ejecutar la simulación."));
-        return;
-      }
-
-      setResult(payload as SimulationResult);
+      const simulationResult = await requestSimulation(formValues);
+      setResult(simulationResult);
       setStep(3);
-    } catch {
+      setWhatIfRows(buildWhatIfRows(formValues, simulationResult));
+    } catch (cause) {
       setResult(null);
-      setError("No fue posible ejecutar la simulación. Intentá nuevamente.");
+      setWhatIfRows([]);
+      const message = cause instanceof Error ? cause.message : "No fue posible ejecutar la simulación.";
+      setError(sanitizeUserError(message));
     } finally {
       setLoading(false);
+      setWhatIfLoading(false);
     }
   });
 
@@ -1118,6 +1191,11 @@ export default function HomePage() {
                     reset(defaultValues);
                     setResult(null);
                     setError(null);
+                    setIsTraceOpen(false);
+                    setWhatIfRows([]);
+                    setWhatIfError(null);
+                    setWhatIfLoading(false);
+                    setHoveredWhatIfIndex(null);
                   }}
                 >
                   Restaurar datos iniciales
@@ -1272,6 +1350,15 @@ export default function HomePage() {
             <>
               <h2>Resultados</h2>
               <p>Ejecutá la simulación y revisá los indicadores clave del escenario configurado.</p>
+              <div className="cms-results-topbar">
+                <button
+                  type="button"
+                  className="cms-btn cms-btn-soft cms-btn-mini"
+                  onClick={() => setIsTraceOpen(true)}
+                >
+                  Mostrar bitácora de cálculo
+                </button>
+              </div>
 
               <div className="cms-results-layout">
                 <section className="cms-results-column">
@@ -1338,48 +1425,98 @@ export default function HomePage() {
                   </div>
                 </section>
 
-                <aside className="cms-trace-column">
-                  <div className="cms-trace-head">
-                    <h3>Bitácora del cálculo</h3>
-                    <button
-                      type="button"
-                      className="cms-section-chip-toggle"
-                      aria-expanded={isTraceOpen}
-                      onClick={() => setIsTraceOpen((prev) => !prev)}
-                    >
-                      {isTraceOpen ? "Ocultar detalle" : "Ver detalle del cálculo"}
-                    </button>
-                  </div>
-                  {isTraceOpen && (
-                    <>
-                      <ol className="cms-trace-list">
-                        {traceSteps.map((traceStep, index) => {
-                          const isVisible = index < traceRevealCount;
-                          const isActive = loading && index === traceRevealCount - 1;
-                          return (
-                            <li
-                              key={traceStep.title}
-                              className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
-                            >
-                              <span className="cms-trace-number">{index + 1}.</span>
-                              <div className="cms-trace-body">
-                                <p className="cms-trace-title">{traceStep.title}</p>
-                                <p>
-                                  <strong>Parámetros:</strong> {traceStep.parameters}
-                                </p>
-                                <p>
-                                  <strong>Fórmula / regla:</strong> {traceStep.formula}
-                                </p>
-                                <p>
-                                  <strong>Resultado:</strong> {traceStep.outcome}
-                                </p>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                      <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
-                    </>
+                <aside className="cms-analysis-column">
+                  <h3>Análisis What-If</h3>
+
+                  {whatIfLoading && (
+                    <div className="cms-inline-note">
+                      <span>Calculando escenarios de variabilidad...</span>
+                    </div>
+                  )}
+
+                  {whatIfError && <div className="cms-status error">{whatIfError}</div>}
+
+                  {!whatIfLoading && !whatIfError && whatIfRows.length > 0 && (
+                    <div className="cms-whatif-stack">
+                      <div className="cms-whatif-table-wrap">
+                        <table className="cms-whatif-table">
+                          <thead>
+                            <tr>
+                              <th>Aporte voluntario mensual</th>
+                              <th>Beneficio proyectado</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {whatIfRows.map((row) => (
+                              <tr key={row.monthlyAmount}>
+                                <td>{formatCurrency(row.monthlyAmount)}</td>
+                                <td>{formatCurrency(row.projectedBenefit)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="cms-whatif-chart">
+                        <p>Gráfico de barras</p>
+                        <div className="cms-whatif-meta">
+                          <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
+                          <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
+                        </div>
+                        <div className="cms-whatif-plot">
+                          <div className="cms-whatif-yaxis">
+                            {whatIfTickValues.map((tickValue, index) => (
+                              <span key={`tick-${index}`}>{formatCurrency(tickValue)}</span>
+                            ))}
+                          </div>
+                          <div className="cms-whatif-bars-wrap">
+                            <div className="cms-whatif-grid-lines" aria-hidden="true" />
+                            <div className="cms-whatif-bars">
+                              {whatIfRows.map((row, index) => {
+                                const baseBenefit = whatIfRows[0]?.projectedBenefit ?? 0;
+                                const delta = row.projectedBenefit - baseBenefit;
+                                const deltaPct = baseBenefit > 0 ? (delta / baseBenefit) * 100 : 0;
+                                const ratio = maxWhatIfBenefit > 0 ? row.projectedBenefit / maxWhatIfBenefit : 0;
+                                const height = 24 + ratio * 120;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`bar-${row.monthlyAmount}`}
+                                    className="cms-whatif-bar-item"
+                                    onMouseEnter={() => setHoveredWhatIfIndex(index)}
+                                    onMouseLeave={() => setHoveredWhatIfIndex(null)}
+                                    onFocus={() => setHoveredWhatIfIndex(index)}
+                                    onBlur={() => setHoveredWhatIfIndex(null)}
+                                    aria-label={`${formatCurrency(row.monthlyAmount)}: beneficio ${formatCurrency(row.projectedBenefit)}`}
+                                  >
+                                    <div className="cms-whatif-bar-track">
+                                      <div className="cms-whatif-bar-fill" style={{ height: `${height}px` }} />
+                                    </div>
+                                    {hoveredWhatIfIndex === index && (
+                                      <div className="cms-whatif-tooltip">
+                                        <strong>{formatCurrency(row.monthlyAmount)}</strong>
+                                        <span>Beneficio: {formatCurrency(row.projectedBenefit)}</span>
+                                        <span>
+                                          Variación: {delta >= 0 ? "+" : ""}
+                                          {formatCurrency(delta)} ({formatSignedPercent(deltaPct)})
+                                        </span>
+                                      </div>
+                                    )}
+                                    <span>{formatKLabel(row.monthlyAmount)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!whatIfLoading && !whatIfError && whatIfRows.length === 0 && (
+                    <div className="cms-inline-note">
+                      <span>Ejecutá la simulación para generar el análisis What-If.</span>
+                    </div>
                   )}
                 </aside>
               </div>
@@ -1447,6 +1584,10 @@ export default function HomePage() {
                   setError(null);
                   setIsTraceOpen(false);
                   setTraceRevealCount(0);
+                  setWhatIfRows([]);
+                  setWhatIfError(null);
+                  setWhatIfLoading(false);
+                  setHoveredWhatIfIndex(null);
                   setStep(0);
                 }}
               >
@@ -1463,6 +1604,50 @@ export default function HomePage() {
               </button>
             )}
           </div>
+
+          {step === 3 && (
+            <>
+              <div
+                className={`cms-trace-drawer-backdrop ${isTraceOpen ? "open" : ""}`}
+                onClick={() => setIsTraceOpen(false)}
+              />
+              <aside className={`cms-trace-drawer ${isTraceOpen ? "open" : ""}`} aria-hidden={!isTraceOpen}>
+                <div className="cms-trace-head">
+                  <h3>Bitácora del cálculo</h3>
+                  <button type="button" className="cms-btn cms-btn-soft cms-btn-mini" onClick={() => setIsTraceOpen(false)}>
+                    Cerrar
+                  </button>
+                </div>
+                <ol className="cms-trace-list">
+                  {traceSteps.map((traceStep, index) => {
+                    const isVisible = index < traceRevealCount;
+                    const isActive = loading && index === traceRevealCount - 1;
+                    return (
+                      <li
+                        key={traceStep.title}
+                        className={`cms-trace-item ${isVisible ? "visible" : ""} ${isActive ? "active" : ""}`}
+                      >
+                        <span className="cms-trace-number">{index + 1}.</span>
+                        <div className="cms-trace-body">
+                          <p className="cms-trace-title">{traceStep.title}</p>
+                          <p>
+                            <strong>Parámetros:</strong> {traceStep.parameters}
+                          </p>
+                          <p>
+                            <strong>Fórmula / regla:</strong> {traceStep.formula}
+                          </p>
+                          <p>
+                            <strong>Resultado:</strong> {traceStep.outcome}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="cms-trace-footer">Cálculo realizado en tiempo real</p>
+              </aside>
+            </>
+          )}
         </section>
       </section>
     </main>
@@ -1498,4 +1683,17 @@ function formatPercent(value: number): string {
   return new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 1
   }).format(value) + "%";
+}
+
+function formatSignedPercent(value: number): string {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatPercent(value)}`;
+}
+
+function formatKLabel(value: number): string {
+  if (value < 1000) {
+    return formatNumber(value);
+  }
+
+  return `${formatNumber(value / 1000)}k`;
 }

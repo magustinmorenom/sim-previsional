@@ -22,8 +22,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (parsed.data.beneficiaries.length > 12) {
       return NextResponse.json(
         {
-          error:
-            "El cálculo exacto 1:1 con VBA está habilitado hasta n <= 12 por complejidad combinatoria (2^n)."
+          error: "El cálculo exacto está habilitado hasta n <= 12 por complejidad combinatoria (2^n)."
         },
         { status: 422 }
       );
