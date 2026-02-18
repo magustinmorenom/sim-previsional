@@ -31,10 +31,18 @@ export const simulationInputSchema = z
     beneficiaries: z.array(beneficiarySchema).min(1).max(56)
   })
   .superRefine((value, ctx) => {
+    if (value.mandatoryContribution.endAge < 65) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La edad fin de aportes obligatorios no puede ser menor a 65.",
+        path: ["mandatoryContribution", "endAge"]
+      });
+    }
+
     if (value.mandatoryContribution.endAge < value.mandatoryContribution.startAge) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "mandatoryContribution.endAge no puede ser menor que startAge",
+        message: "La edad fin de aportes obligatorios no puede ser menor que la edad de inicio.",
         path: ["mandatoryContribution", "endAge"]
       });
     }
@@ -42,8 +50,24 @@ export const simulationInputSchema = z
     if (value.voluntaryContribution.endAge < value.voluntaryContribution.startAge) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "voluntaryContribution.endAge no puede ser menor que startAge",
+        message: "La edad fin de aportes voluntarios no puede ser menor que la edad de inicio.",
         path: ["voluntaryContribution", "endAge"]
+      });
+    }
+
+    if (value.voluntaryContribution.endAge > value.mandatoryContribution.endAge) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La edad fin de aportes voluntarios no puede ser mayor que la edad fin de aportes obligatorios.",
+        path: ["voluntaryContribution", "endAge"]
+      });
+    }
+
+    if (value.voluntaryContribution.monthlyAmount > value.mandatoryContribution.endAge) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El importe mensual voluntario no puede ser mayor que la edad fin de aportes obligatorios.",
+        path: ["voluntaryContribution", "monthlyAmount"]
       });
     }
 

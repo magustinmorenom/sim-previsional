@@ -5,6 +5,7 @@ import {
   useController,
   useFieldArray,
   useForm,
+  useWatch,
   type Control,
   type FieldPath
 } from "react-hook-form";
@@ -16,7 +17,7 @@ import { defaultSimulationInput } from "@/lib/defaults";
 import { simulationInputSchema } from "@/lib/validation/simulation-input";
 import type { BeneficiaryInput, SimulationInput, SimulationResult } from "@/lib/types/simulation";
 
-const steps = ["Grupo familiar", "Fechas y aportes", "Parámetros", "Resultados"] as const;
+const steps = ["Grupo familiar", "Edades y aportes", "Parámetros", "Resultados"] as const;
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const resultFaqQuestions = [
@@ -24,7 +25,7 @@ const resultFaqQuestions = [
   "¿Este valor está en términos actuales o ajusta inflación?",
   "¿Desde qué fecha empezaría a cobrar?",
   "¿Qué parte depende de mis datos y qué parte de supuestos técnicos?",
-  "¿Cuánto cambia el resultado si modifico BOV o años de aporte?",
+  "¿Cuánto cambia el resultado si modifico VAR o años de aporte?",
   "¿Qué efecto tiene aumentar el aporte voluntario mensual?",
   "¿Cómo impacta mi grupo familiar en el cálculo?",
   "¿Qué es el PPUU y por qué aparece en el resultado?",
@@ -127,6 +128,26 @@ function estimateRetirementDate(
 
   const candidate = new Date(birth.getFullYear() + 65, birth.getMonth(), birth.getDate());
   return formatIsoDate(candidate > calc ? candidate : calc);
+}
+
+function ageInYearsOnDate(birthDateIso: string, referenceDateIso: string): number | null {
+  const birth = parseIsoDate(birthDateIso);
+  const reference = parseIsoDate(referenceDateIso);
+
+  if (!birth || !reference) {
+    return null;
+  }
+
+  let age = reference.getFullYear() - birth.getFullYear();
+  const beforeBirthday =
+    reference.getMonth() < birth.getMonth() ||
+    (reference.getMonth() === birth.getMonth() && reference.getDate() < birth.getDate());
+
+  if (beforeBirthday) {
+    age -= 1;
+  }
+
+  return Math.max(0, age);
 }
 
 type TraceStep = {
@@ -322,18 +343,51 @@ export default function HomePage() {
   const [traceRevealCount, setTraceRevealCount] = useState(0);
   const traceIntervalRef = useRef<number | null>(null);
   const traceCompletionRef = useRef<number | null>(null);
+  const todayIso = useMemo(() => formatIsoDate(new Date()), []);
+  const defaultValues = useMemo<SimulationInput>(
+    () => ({
+      ...defaultSimulationInput,
+      calculationDate: todayIso
+    }),
+    [todayIso]
+  );
+  const zeroValues = useMemo<SimulationInput>(
+    () => ({
+      calculationDate: todayIso,
+      accountBalance: 0,
+      bov: 0,
+      mandatoryContribution: {
+        startAge: 0,
+        endAge: 0
+      },
+      voluntaryContribution: {
+        startAge: 0,
+        endAge: 0,
+        monthlyAmount: 0
+      },
+      beneficiaries: [
+        {
+          type: "T",
+          sex: 1,
+          birthDate: todayIso,
+          invalid: 0
+        }
+      ]
+    }),
+    [todayIso]
+  );
 
   const {
     control,
     register,
-    watch,
+    setValue,
     reset,
     trigger,
     handleSubmit,
     formState: { errors }
   } = useForm<SimulationInput>({
     resolver: zodResolver(simulationInputSchema),
-    defaultValues: defaultSimulationInput,
+    defaultValues,
     mode: "onChange"
   });
 
@@ -342,15 +396,14 @@ export default function HomePage() {
     name: "beneficiaries"
   });
 
-  const beneficiaries = watch("beneficiaries");
-  const calculationDate = watch("calculationDate");
-  const mandatoryStartAge = watch("mandatoryContribution.startAge");
-  const mandatoryEndAge = watch("mandatoryContribution.endAge");
-  const voluntaryStartAge = watch("voluntaryContribution.startAge");
-  const voluntaryEndAge = watch("voluntaryContribution.endAge");
-  const voluntaryMonthlyAmount = watch("voluntaryContribution.monthlyAmount");
-  const accountBalance = watch("accountBalance");
-  const bov = watch("bov");
+  const beneficiaries = useWatch({ control, name: "beneficiaries" });
+  const calculationDate = useWatch({ control, name: "calculationDate" });
+  const mandatoryStartAge = useWatch({ control, name: "mandatoryContribution.startAge" });
+  const voluntaryStartAge = useWatch({ control, name: "voluntaryContribution.startAge" });
+  const voluntaryEndAge = useWatch({ control, name: "voluntaryContribution.endAge" });
+  const voluntaryMonthlyAmount = useWatch({ control, name: "voluntaryContribution.monthlyAmount" });
+  const accountBalance = useWatch({ control, name: "accountBalance" });
+  const varValue = useWatch({ control, name: "bov" });
 
   const counts = useMemo(() => {
     const list = beneficiaries ?? [];
@@ -367,6 +420,33 @@ export default function HomePage() {
   }, [beneficiaries]);
 
   const hasBlockingTitular = counts.titulares > 1;
+
+  useEffect(() => {
+    if (calculationDate !== todayIso) {
+      setValue("calculationDate", todayIso, { shouldDirty: false, shouldValidate: true });
+    }
+  }, [calculationDate, setValue, todayIso]);
+
+  const titularBirthDate = beneficiaries?.find((item) => item.type === "T")?.birthDate ?? null;
+  const currentAge = titularBirthDate ? ageInYearsOnDate(titularBirthDate, calculationDate || todayIso) : null;
+
+  useEffect(() => {
+    const nextAge = currentAge ?? 0;
+
+    if (mandatoryStartAge !== nextAge) {
+      setValue("mandatoryContribution.startAge", nextAge, {
+        shouldDirty: false,
+        shouldValidate: true
+      });
+    }
+
+    if (voluntaryStartAge !== nextAge) {
+      setValue("voluntaryContribution.startAge", nextAge, {
+        shouldDirty: false,
+        shouldValidate: true
+      });
+    }
+  }, [currentAge, mandatoryStartAge, setValue, voluntaryStartAge]);
 
   const retirementPreview = useMemo(
     () => estimateRetirementDate(beneficiaries, calculationDate) ?? "pendiente",
@@ -396,8 +476,8 @@ export default function HomePage() {
   }, [voluntaryMonthlyAmount, voluntaryMonths]);
 
   const benefitAnnual = result ? result.projectedBenefit * 12 : 0;
-  const benefitVsBovPct =
-    result && bov > 0 ? (result.projectedBenefit / bov) * 100 : null;
+  const benefitVsVarPct =
+    result && varValue > 0 ? (result.projectedBenefit / varValue) * 100 : null;
   const balanceGrowthPct =
     result && accountBalance > 0 ? ((result.finalBalance - accountBalance) / accountBalance) * 100 : null;
 
@@ -438,7 +518,7 @@ export default function HomePage() {
         question: resultFaqQuestions[3],
         answer: (
           <>
-            Tus datos (edades, grupo, aportes, saldo y BOV) definen el escenario. Las bases técnicas aplican la
+            Tus datos (edades, grupo, aportes, saldo y VAR) definen el escenario. Las bases técnicas aplican la
             transformación actuarial. En este caso usamos {tracePill(`${counts.n} personas`, "param")},{" "}
             {tracePill("tasa 4%", "param")} y tablas vigentes para llegar al resultado.
           </>
@@ -448,9 +528,9 @@ export default function HomePage() {
         question: resultFaqQuestions[4],
         answer: (
           <>
-            Regla práctica: subir BOV o extender años de aporte tiende a subir el beneficio. Hoy tenés{" "}
-            {tracePill(`BOV ${formatCurrency(bov || 0)}`, "param")} y un beneficio estimado de{" "}
-            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")}. Si aumentás BOV en{" "}
+            Regla práctica: subir VAR o extender años de aporte tiende a subir el beneficio. Hoy tenés{" "}
+            {tracePill(`VAR ${formatCurrency(varValue || 0)}`, "param")} y un beneficio estimado de{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")}. Si aumentás VAR en{" "}
             {tracePill("10%", "calc")}, esperá un impacto positivo al recalcular.
           </>
         )
@@ -501,23 +581,23 @@ export default function HomePage() {
         question: resultFaqQuestions[9],
         answer: (
           <>
-            Compará beneficio proyectado contra tu objetivo mensual (BOV). Escenario actual: beneficio{" "}
-            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} vs BOV{" "}
-            {tracePill(formatCurrency(bov || 0), "param")}. Cobertura aproximada:{" "}
-            {tracePill(benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente", "calc")}.
+            Compará beneficio proyectado contra tu objetivo mensual (VAR). Escenario actual: beneficio{" "}
+            {tracePill(result ? formatCurrency(result.projectedBenefit) : "pendiente", "result")} vs VAR{" "}
+            {tracePill(formatCurrency(varValue || 0), "param")}. Cobertura aproximada:{" "}
+            {tracePill(benefitVsVarPct !== null ? formatPercent(benefitVsVarPct) : "pendiente", "calc")}.
           </>
         )
       }
     ],
     [
       benefitAnnual,
-      benefitVsBovPct,
-      bov,
+      benefitVsVarPct,
       counts.children,
       counts.n,
       counts.spouses,
       result,
       retirementPreview,
+      varValue,
       voluntaryMonthlyAmount,
       voluntaryMonths,
       voluntaryNominalContribution
@@ -625,15 +705,15 @@ export default function HomePage() {
         title: "Proyección de saldo final",
         parameters: (
           <>
-            Tomamos saldo actual {tracePill(formatCurrency(accountBalance || 0), "param")}, BOV{" "}
-            {tracePill(formatCurrency(bov || 0), "param")}, rango voluntario{" "}
+            Tomamos saldo actual {tracePill(formatCurrency(accountBalance || 0), "param")}, VAR{" "}
+            {tracePill(formatCurrency(varValue || 0), "param")}, rango voluntario{" "}
             {tracePill(`${voluntaryStartAge}-${voluntaryEndAge}`, "param")} y aporte mensual{" "}
             {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "param")}.
           </>
         ),
         formula: (
           <>
-            Proyectamos el saldo acumulando al retiro, sumando el componente por BOV y el efecto de aportes voluntarios
+            Proyectamos el saldo acumulando al retiro, sumando el componente por VAR y el efecto de aportes voluntarios
             según rango configurado. Referencia rápida: {tracePill(`${formatNumber(voluntaryMonths)} meses`, "calc")} x{" "}
             {tracePill(formatCurrency(voluntaryMonthlyAmount || 0), "calc")} ={" "}
             {tracePill(formatCurrency(voluntaryNominalContribution), "calc")} nominales.
@@ -704,15 +784,13 @@ export default function HomePage() {
       accountBalance,
       balanceGrowthPct,
       beneficiaries,
-      bov,
       calculationDate,
       counts.n,
       counts.titulares,
       hasBlockingTitular,
-      mandatoryEndAge,
-      mandatoryStartAge,
       result,
       retirementPreview,
+      varValue,
       voluntaryEndAge,
       voluntaryMonthlyAmount,
       voluntaryNominalContribution,
@@ -1037,7 +1115,7 @@ export default function HomePage() {
                   type="button"
                   className="cms-btn cms-btn-soft"
                   onClick={() => {
-                    reset(defaultSimulationInput);
+                    reset(defaultValues);
                     setResult(null);
                     setError(null);
                   }}
@@ -1061,11 +1139,20 @@ export default function HomePage() {
 
           {step === 1 && (
             <>
-              <h2>Fechas y aportes</h2>
-              <p>Completá fecha de cálculo, saldo de cuenta y el tramo de aportes para personalizar la proyección.</p>
+              <h2>Edades y aportes</h2>
+              <p>Completá saldo de cuenta y el tramo de aportes para personalizar la proyección.</p>
 
               <div className="cms-form-grid">
-                <DateField control={control} name="calculationDate" label="Fecha de cálculo" />
+                <label className="cms-field">
+                  Fecha de cálculo
+                  <span className="cms-chip cms-chip-primary">
+                    {formatIsoToDisplay(calculationDate || todayIso)}
+                  </span>
+                  <input type="hidden" {...register("calculationDate")} />
+                  {errors.calculationDate?.message && (
+                    <span className="cms-field-error">{errors.calculationDate.message}</span>
+                  )}
+                </label>
 
                 <label className="cms-field">
                   Saldo de cuenta
@@ -1082,19 +1169,19 @@ export default function HomePage() {
 
                 <label className="cms-field">
                   Aportes obligatorios - Edad inicio
-                  <input
-                    type="number"
-                    {...register("mandatoryContribution.startAge", {
-                      valueAsNumber: true
-                    })}
-                  />
+                  <span className="cms-chip cms-chip-primary">
+                    {typeof currentAge === "number" && !Number.isNaN(currentAge) ? currentAge : "-"}
+                  </span>
                   {errors.mandatoryContribution?.startAge?.message && (
                     <span className="cms-field-error">{errors.mandatoryContribution.startAge.message}</span>
                   )}
                 </label>
 
                 <label className="cms-field">
-                  Aportes obligatorios - Edad fin
+                  <span className="cms-field-label-row">
+                    <span>Aportes obligatorios - Edad fin</span>
+                    <span className="cms-chip cms-chip-neutral">Edad de jubilación</span>
+                  </span>
                   <input
                     type="number"
                     {...register("mandatoryContribution.endAge", {
@@ -1108,12 +1195,9 @@ export default function HomePage() {
 
                 <label className="cms-field">
                   Aportes voluntarios - Edad inicio
-                  <input
-                    type="number"
-                    {...register("voluntaryContribution.startAge", {
-                      valueAsNumber: true
-                    })}
-                  />
+                  <span className="cms-chip cms-chip-primary">
+                    {typeof currentAge === "number" && !Number.isNaN(currentAge) ? currentAge : "-"}
+                  </span>
                   {errors.voluntaryContribution?.startAge?.message && (
                     <span className="cms-field-error">{errors.voluntaryContribution.startAge.message}</span>
                   )}
@@ -1133,7 +1217,17 @@ export default function HomePage() {
                 </label>
 
                 <label className="cms-field">
-                  Importe mensual aportes voluntarios
+                  <span className="cms-field-label-row">
+                    <span>Importe mensual aportes voluntarios</span>
+                    <span
+                      className="cms-tooltip-trigger"
+                      tabIndex={0}
+                      aria-label="Información sobre importe mensual de aportes voluntarios"
+                      data-tooltip="Simula el aporte mensual de aportes voluntarios hasta la edad que elijas, usualmente la misma edad que se jubila. Luego ves como impacta en el resultado."
+                    >
+                      ?
+                    </span>
+                  </span>
                   <input
                     type="number"
                     {...register("voluntaryContribution.monthlyAmount", {
@@ -1155,7 +1249,7 @@ export default function HomePage() {
 
               <div className="cms-form-grid">
                 <label className="cms-field">
-                  BOV
+                  VAR
                   <input
                     type="number"
                     {...register("bov", {
@@ -1220,15 +1314,11 @@ export default function HomePage() {
                         <div className="cms-kpi-strip">
                           <article className="cms-kpi-item">
                             <span>PPUU Acumulados</span>
-                            <strong>{formatNumber(result.ppuu)}</strong>
+                            <strong>{formatNumber(result.ppuu, 2)}</strong>
                           </article>
                           <article className="cms-kpi-item cms-kpi-item-primary">
                             <span>Beneficio Mensual Proyectado</span>
                             <strong>{formatCurrency(result.projectedBenefit)}</strong>
-                            <small>
-                              Resultado principal · Cobertura vs BOV:{" "}
-                              {benefitVsBovPct !== null ? formatPercent(benefitVsBovPct) : "pendiente"}
-                            </small>
                           </article>
                         </div>
 
@@ -1347,14 +1437,31 @@ export default function HomePage() {
             <button type="button" className="cms-btn cms-btn-soft" onClick={goPrev} disabled={step === 0}>
               Anterior
             </button>
-            <button
-              type="button"
-              className="cms-btn cms-btn-main"
-              onClick={() => void goNext()}
-              disabled={step === steps.length - 1 || !canProceedSync()}
-            >
-              Siguiente
-            </button>
+            {step === steps.length - 1 ? (
+              <button
+                type="button"
+                className="cms-btn cms-btn-main"
+                onClick={() => {
+                  reset(zeroValues);
+                  setResult(null);
+                  setError(null);
+                  setIsTraceOpen(false);
+                  setTraceRevealCount(0);
+                  setStep(0);
+                }}
+              >
+                Realizar nueva simulación
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="cms-btn cms-btn-main"
+                onClick={() => void goNext()}
+                disabled={!canProceedSync()}
+              >
+                Siguiente
+              </button>
+            )}
           </div>
         </section>
       </section>
@@ -1372,9 +1479,10 @@ function sanitizeUserError(message: string): string {
   return message;
 }
 
-function formatNumber(value: number): string {
+function formatNumber(value: number, fractionDigits = 0): string {
   return new Intl.NumberFormat("es-AR", {
-    maximumFractionDigits: 0
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
   }).format(value);
 }
 
