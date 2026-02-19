@@ -18,6 +18,8 @@ import type { SimulationInput, SimulationResult } from "@/lib/types/simulation";
 const WHAT_IF_STEP = 100000;
 const WHAT_IF_SCENARIOS = 8;
 const WHAT_IF_TICKS = 5;
+const EDITABLE_AGE_OPTIONS = [65, 66, 67, 68, 69, 70] as const;
+const VOLUNTARY_CONTRIBUTION_STEPS = [50, 100, 200, 300, 500, 800] as const;
 
 type EditableFormState = {
   voluntaryMonthlyAmount: string;
@@ -330,6 +332,52 @@ export default function HomePage() {
     });
   }
 
+  function enforceAgeMinimum(name: "retirementAge" | "voluntaryEndAge"): void {
+    setFormState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const parsed = toFiniteNumber(current[name]);
+      if (!Number.isFinite(parsed)) {
+        return current;
+      }
+
+      if (parsed >= 65) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [name]: "65"
+      };
+    });
+  }
+
+  function applyVoluntaryContributionStep(step: number): void {
+    setFormState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const parsed = toFiniteNumber(current.voluntaryMonthlyAmount);
+      const safeAmount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+
+      return {
+        ...current,
+        voluntaryMonthlyAmount: String(Math.round(safeAmount + step))
+      };
+    });
+  }
+
+  function setAgeFromQuickPicker(name: "retirementAge" | "voluntaryEndAge", age: number): void {
+    updateFormField(name, String(age));
+  }
+
+  function isQuickAgeSelected(rawValue: string, option: number): boolean {
+    return toFiniteNumber(rawValue) === option;
+  }
+
   async function runSimulation(): Promise<void> {
     if (!context || !formState) {
       return;
@@ -619,51 +667,133 @@ export default function HomePage() {
                     </section>
                   </article>
 
-                  <article className="af-card">
-                    <h2>Variables editables</h2>
-                    <p>
-                      Solo podés editar el aporte voluntario mensual, la edad de jubilación y la edad fin de aportes voluntarios.
-                    </p>
+                  <article className="af-card af-editables-card">
+                    <div className="af-editables-heading">
+                      <span className="af-editables-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="m19.4 15-1.1.63a1 1 0 0 0-.47.95l.13 1.26a1 1 0 0 1-.93 1.1l-1.28.07a1 1 0 0 0-.84.62l-.48 1.17a1 1 0 0 1-1.22.57l-1.24-.38a1 1 0 0 0-.9.2l-.95.8a1 1 0 0 1-1.35 0l-.95-.8a1 1 0 0 0-.9-.2l-1.24.38a1 1 0 0 1-1.22-.57l-.48-1.17a1 1 0 0 0-.84-.62l-1.28-.07a1 1 0 0 1-.93-1.1l.13-1.26a1 1 0 0 0-.47-.95L4.6 15a1 1 0 0 1-.47-1.26l.5-1.16a1 1 0 0 0-.08-.95l-.7-1.06a1 1 0 0 1 .2-1.43l1-.84a1 1 0 0 0 .34-.9L5.24 6.1a1 1 0 0 1 .72-1.24l1.23-.33a1 1 0 0 0 .7-.65l.46-1.18a1 1 0 0 1 1.21-.6l1.25.35a1 1 0 0 0 .9-.22l.93-.82a1 1 0 0 1 1.36 0l.93.82a1 1 0 0 0 .9.22l1.25-.35a1 1 0 0 1 1.21.6l.46 1.18a1 1 0 0 0 .7.65l1.23.33a1 1 0 0 1 .72 1.24l-.15 1.3a1 1 0 0 0 .34.9l1 .84a1 1 0 0 1 .2 1.43l-.7 1.06a1 1 0 0 0-.08.95l.5 1.16A1 1 0 0 1 19.4 15Z"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <div className="af-editables-copy">
+                        <h2>Variables editables</h2>
+                        <p>
+                          Personalizá tu escenario eligiendo valores rápidos o ingresando los tuyos manualmente.
+                        </p>
+                      </div>
+                    </div>
 
                     <div className="af-form af-form-compact">
-                      <label className="af-field">
-                        Aporte voluntario mensual
-                        <input
-                          type="number"
-                          min={0}
-                          value={formState.voluntaryMonthlyAmount}
-                          onChange={(event) => updateFormField("voluntaryMonthlyAmount", event.target.value)}
-                        />
+                      <label className="af-field af-editable-group">
+                        <span className="af-editable-label">Aporte voluntario mensual</span>
+                        <div className="af-currency-input">
+                          <span>$</span>
+                          <input
+                            type="number"
+                            list="voluntary-contribution-suggestions"
+                            step={1}
+                            min={0}
+                            value={formState.voluntaryMonthlyAmount}
+                            onChange={(event) => updateFormField("voluntaryMonthlyAmount", event.target.value)}
+                          />
+                        </div>
+                        <div className="af-quick-button-row">
+                          {VOLUNTARY_CONTRIBUTION_STEPS.map((step) => (
+                            <button
+                              type="button"
+                              key={`voluntary-step-${step}`}
+                              className="af-quick-button"
+                              onClick={() => applyVoluntaryContributionStep(step)}
+                            >
+                              + ${formatNumber(step)}
+                            </button>
+                          ))}
+                        </div>
+                        <datalist id="voluntary-contribution-suggestions">
+                          {VOLUNTARY_CONTRIBUTION_STEPS.map((amount) => (
+                            <option key={`voluntary-amount-${amount}`} value={amount} />
+                          ))}
+                        </datalist>
                         {formErrors.voluntaryMonthlyAmount && (
                           <span className="af-field-error">{formErrors.voluntaryMonthlyAmount}</span>
                         )}
                       </label>
 
-                      <label className="af-field">
-                        Edad de jubilación
-                        <input
-                          type="number"
-                          min={65}
-                          value={formState.retirementAge}
-                          onChange={(event) => updateFormField("retirementAge", event.target.value)}
-                        />
-                        {formErrors.retirementAge && (
-                          <span className="af-field-error">{formErrors.retirementAge}</span>
-                        )}
-                      </label>
+                      <div className="af-editable-age-row">
+                        <label className="af-field af-editable-group">
+                          <span className="af-editable-label">Edad de jubilación</span>
+                          <input
+                            type="number"
+                            list="editable-age-options"
+                            min={65}
+                            step={1}
+                            value={formState.retirementAge}
+                            onChange={(event) => updateFormField("retirementAge", event.target.value)}
+                            onBlur={() => enforceAgeMinimum("retirementAge")}
+                          />
+                          <div className="af-quick-button-row">
+                            {EDITABLE_AGE_OPTIONS.map((age) => (
+                              <button
+                                type="button"
+                                key={`retirement-age-${age}`}
+                                className={`af-quick-button ${isQuickAgeSelected(formState.retirementAge, age) ? "af-quick-button-active" : ""}`}
+                                onClick={() => setAgeFromQuickPicker("retirementAge", age)}
+                              >
+                                {age} años
+                              </button>
+                            ))}
+                          </div>
+                          {formErrors.retirementAge && (
+                            <span className="af-field-error">{formErrors.retirementAge}</span>
+                          )}
+                        </label>
 
-                      <label className="af-field">
-                        Edad fin de aportes voluntarios
-                        <input
-                          type="number"
-                          min={context.voluntaryContribution.startAge}
-                          value={formState.voluntaryEndAge}
-                          onChange={(event) => updateFormField("voluntaryEndAge", event.target.value)}
-                        />
-                        {formErrors.voluntaryEndAge && (
-                          <span className="af-field-error">{formErrors.voluntaryEndAge}</span>
-                        )}
-                      </label>
+                        <label className="af-field af-editable-group">
+                          <span className="af-editable-label">Edad fin de aportes voluntarios</span>
+                          <input
+                            type="number"
+                            list="editable-age-options"
+                            min={65}
+                            step={1}
+                            value={formState.voluntaryEndAge}
+                            onChange={(event) => updateFormField("voluntaryEndAge", event.target.value)}
+                            onBlur={() => enforceAgeMinimum("voluntaryEndAge")}
+                          />
+                          <div className="af-quick-button-row">
+                            {EDITABLE_AGE_OPTIONS.map((age) => (
+                              <button
+                                type="button"
+                                key={`voluntary-end-age-${age}`}
+                                className={`af-quick-button ${isQuickAgeSelected(formState.voluntaryEndAge, age) ? "af-quick-button-active" : ""}`}
+                                onClick={() => setAgeFromQuickPicker("voluntaryEndAge", age)}
+                              >
+                                {age} años
+                              </button>
+                            ))}
+                          </div>
+                          {formErrors.voluntaryEndAge && (
+                            <span className="af-field-error">{formErrors.voluntaryEndAge}</span>
+                          )}
+                        </label>
+                      </div>
+
+                      <datalist id="editable-age-options">
+                        {EDITABLE_AGE_OPTIONS.map((age) => (
+                          <option key={`editable-age-${age}`} value={age} />
+                        ))}
+                      </datalist>
 
                       <button
                         type="button"

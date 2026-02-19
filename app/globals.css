@@ -140,6 +140,60 @@ textarea {
   gap: 8px;
 }
 
+.af-editables-card {
+  gap: 10px;
+}
+
+.af-editables-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.af-editables-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eaf0fb;
+  color: var(--brand);
+  border: 1px solid #d4e0f2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.af-editables-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.af-editables-copy h2 {
+  margin: 0;
+}
+
+.af-editables-copy p {
+  margin: 4px 0 0;
+  color: var(--text-soft);
+}
+
+.af-editable-age-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.af-editable-group {
+  gap: 6px;
+}
+
+.af-editable-label {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #5a6f8b;
+  font-size: 11px;
+}
+
 .af-field {
   display: grid;
   gap: 5px;
@@ -159,10 +213,74 @@ textarea {
   font-size: 13px;
 }
 
+.af-currency-input {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.af-currency-input span {
+  padding: 0 0 0 10px;
+  color: #7a8ba4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.af-currency-input input {
+  border: 0;
+  background: transparent;
+  min-height: 34px;
+  padding: 0 10px 0 8px;
+}
+
+.af-currency-input input:focus {
+  outline: none;
+}
+
+.af-currency-input:focus-within {
+  outline: 2px solid rgba(23, 74, 139, 0.2);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
 .af-field input:focus {
   outline: 2px solid rgba(23, 74, 139, 0.2);
   outline-offset: 1px;
   border-color: var(--brand);
+}
+
+.af-quick-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.af-quick-button {
+  border: 1px solid #c7d5e8;
+  border-radius: 10px;
+  min-height: 30px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #445a79;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.af-quick-button:hover {
+  border-color: #a7bdd8;
+}
+
+.af-quick-button-active {
+  border-color: transparent;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%);
+  box-shadow: 0 6px 12px rgba(14, 52, 99, 0.2);
 }
 
 .af-field-error {
@@ -611,7 +729,8 @@ textarea {
   .af-grid-results,
   .af-kpi-grid,
   .af-summary-grid,
-  .af-person-grid {
+  .af-person-grid,
+  .af-editable-age-row {
     grid-template-columns: 1fr;
   }
 
