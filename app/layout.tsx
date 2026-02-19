@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Simulador Previsional CEER 2025",
   description:
-    "Migración del proyectador CEER 2025 a aplicación web con wizard explicativo y cálculo actuarial equivalente"
+    "Simulador previsional para afiliados con autenticación OTP, datos remotos y cálculo actuarial en pantalla única"
 };
 
 export default function RootLayout({

@@ -1,0 +1,79 @@
+{
+  "affiliates": [
+    {
+      "email": "amoreno@odin.ar",
+      "fullName": "Ana Laura Moreno",
+      "calculationDate": "2026-02-19",
+      "funds": {
+        "mandatory": 4275300.62,
+        "voluntary": 395440.18
+      },
+      "bov": 275000,
+      "mandatoryContribution": {
+        "startAge": 44,
+        "endAge": 65
+      },
+      "voluntaryContribution": {
+        "startAge": 44,
+        "endAge": 65
+      },
+      "beneficiaries": [
+        {
+          "fullName": "Ana Laura Moreno",
+          "type": "T",
+          "sex": 1,
+          "birthDate": "1981-03-15",
+          "invalid": 0
+        },
+        {
+          "fullName": "Carolina Pérez",
+          "type": "C",
+          "sex": 2,
+          "birthDate": "1985-11-02",
+          "invalid": 0
+        },
+        {
+          "fullName": "Lucía Moreno Pérez",
+          "type": "H",
+          "sex": 2,
+          "birthDate": "2012-07-19",
+          "invalid": 0
+        }
+      ]
+    },
+    {
+      "email": "magustin.morenom@gmail.com",
+      "fullName": "Martín Agustín Moreno",
+      "calculationDate": "2026-02-19",
+      "funds": {
+        "mandatory": 3124800.09,
+        "voluntary": 214199.31
+      },
+      "bov": 198500,
+      "mandatoryContribution": {
+        "startAge": 39,
+        "endAge": 65
+      },
+      "voluntaryContribution": {
+        "startAge": 39,
+        "endAge": 65
+      },
+      "beneficiaries": [
+        {
+          "fullName": "Martín Agustín Moreno",
+          "type": "T",
+          "sex": 1,
+          "birthDate": "1986-09-26",
+          "invalid": 0
+        },
+        {
+          "fullName": "Tomás Moreno",
+          "type": "H",
+          "sex": 1,
+          "birthDate": "2014-04-08",
+          "invalid": 0
+        }
+      ]
+    }
+  ]
+}
