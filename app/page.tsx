@@ -19,7 +19,7 @@ const WHAT_IF_STEP = 100000;
 const WHAT_IF_SCENARIOS = 8;
 const WHAT_IF_TICKS = 5;
 const EDITABLE_AGE_OPTIONS = [65, 66, 67, 68, 69, 70] as const;
-const VOLUNTARY_CONTRIBUTION_STEPS = [50, 100, 200, 300, 500, 800] as const;
+const VOLUNTARY_CONTRIBUTION_STEPS = [50000, 100000, 200000, 400000, 800000] as const;
 
 type EditableFormState = {
   voluntaryMonthlyAmount: string;
@@ -96,6 +96,14 @@ export default function HomePage() {
     () => context?.beneficiaries.find((item) => item.type === "T") ?? null,
     [context?.beneficiaries]
   );
+
+  const titularAge = useMemo(() => {
+    if (!titular) {
+      return null;
+    }
+
+    return calculateAgeFromIso(titular.birthDate);
+  }, [titular]);
 
   const maxWhatIfBenefit = useMemo(
     () => whatIfRows.reduce((max, row) => Math.max(max, row.projectedBenefit), 0),
@@ -319,7 +327,7 @@ export default function HomePage() {
     }
   }
 
-  function updateFormField(name: keyof EditableFormState, value: string): void {
+  function updateVoluntaryAmountInput(rawValue: string): void {
     setFormState((current) => {
       if (!current) {
         return current;
@@ -327,29 +335,7 @@ export default function HomePage() {
 
       return {
         ...current,
-        [name]: value
-      };
-    });
-  }
-
-  function enforceAgeMinimum(name: "retirementAge" | "voluntaryEndAge"): void {
-    setFormState((current) => {
-      if (!current) {
-        return current;
-      }
-
-      const parsed = toFiniteNumber(current[name]);
-      if (!Number.isFinite(parsed)) {
-        return current;
-      }
-
-      if (parsed >= 65) {
-        return current;
-      }
-
-      return {
-        ...current,
-        [name]: "65"
+        voluntaryMonthlyAmount: normalizeAmountInput(rawValue)
       };
     });
   }
@@ -360,18 +346,27 @@ export default function HomePage() {
         return current;
       }
 
-      const parsed = toFiniteNumber(current.voluntaryMonthlyAmount);
+      const parsed = parseAmountInput(current.voluntaryMonthlyAmount);
       const safeAmount = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 
       return {
         ...current,
-        voluntaryMonthlyAmount: String(Math.round(safeAmount + step))
+        voluntaryMonthlyAmount: formatAmountInput(Math.round(safeAmount + step))
       };
     });
   }
 
   function setAgeFromQuickPicker(name: "retirementAge" | "voluntaryEndAge", age: number): void {
-    updateFormField(name, String(age));
+    setFormState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [name]: String(age)
+      };
+    });
   }
 
   function isQuickAgeSelected(rawValue: string, option: number): boolean {
@@ -578,135 +573,89 @@ export default function HomePage() {
             )}
 
             {!contextLoading && context && formState && (
-              <>
-                <section className="af-grid af-grid-context">
-                  <article className="af-card">
-                    <h2>Tu información previsional</h2>
-
-                    <div className="af-summary-grid">
-                      <article className="af-summary-item">
-                        <span>Fecha de cálculo</span>
-                        <strong>{formatIsoToDisplay(context.calculationDate)}</strong>
-                      </article>
-                      <article className="af-summary-item">
-                        <span>VAR (Valor Actual de Referencia)</span>
-                        <strong>{formatCurrency(context.bov)}</strong>
-                      </article>
-                      <article className="af-summary-item">
-                        <span>Fondo obligatorio</span>
+              <section className="af-dashboard-grid">
+                <aside className="af-side-column">
+                  <article className="af-card af-side-card">
+                    <div className="af-mini-label">Situación actual</div>
+                    <div className="af-total-box">
+                      <span>Total acumulado</span>
+                      <strong>{formatCurrency(context.funds.total)}</strong>
+                    </div>
+                    <div className="af-side-kpi-grid">
+                      <article className="af-side-kpi">
+                        <span>Obligatorio</span>
                         <strong>{formatCurrency(context.funds.mandatory)}</strong>
                       </article>
-                      <article className="af-summary-item">
-                        <span>Fondo voluntario acumulado</span>
+                      <article className="af-side-kpi">
+                        <span>Voluntario</span>
                         <strong>{formatCurrency(context.funds.voluntary)}</strong>
                       </article>
-                      <article className="af-summary-item af-summary-item-highlight">
-                        <span>Total acumulado</span>
-                        <strong>{formatCurrency(context.funds.total)}</strong>
-                      </article>
                     </div>
-
-                    {titular && (
-                      <section className="af-person-block">
-                        <h3>Titular</h3>
-                        <div className="af-person-grid">
-                          <div>
-                            <span>Nombre completo</span>
-                            <strong>{titular.fullName}</strong>
-                          </div>
-                          <div>
-                            <span>Fecha de nacimiento</span>
-                            <strong>{formatIsoToDisplay(titular.birthDate)}</strong>
-                          </div>
-                          <div>
-                            <span>Sexo</span>
-                            <strong>{formatSex(titular.sex)}</strong>
-                          </div>
-                          <div>
-                            <span>Estado de invalidez</span>
-                            <strong>{formatInvalidity(titular.invalid)}</strong>
-                          </div>
-                        </div>
-                      </section>
-                    )}
-
-                    <section className="af-family-block">
-                      <div className="af-family-header">
-                        <h3>Grupo familiar</h3>
-                        <span>{counts.total} personas registradas</span>
-                      </div>
-
-                      <div className="af-family-table-wrap">
-                        <table className="af-family-table">
-                          <thead>
-                            <tr>
-                              <th>Nombre completo</th>
-                              <th>Parentesco</th>
-                              <th>Fecha de nacimiento</th>
-                              <th>Sexo</th>
-                              <th>Invalidez</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {context.beneficiaries.map((beneficiary, index) => (
-                              <tr key={`${beneficiary.type}-${beneficiary.fullName}-${index}`}>
-                                <td>{beneficiary.fullName}</td>
-                                <td>{formatBeneficiaryType(beneficiary.type)}</td>
-                                <td>{formatIsoToDisplay(beneficiary.birthDate)}</td>
-                                <td>{formatSex(beneficiary.sex)}</td>
-                                <td>{formatInvalidity(beneficiary.invalid)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="af-inline-note">
-                        Composición: {counts.spouses} cónyuge(s) y {counts.children} hijo(s).
-                      </div>
-                    </section>
+                    <div className="af-side-inline-values">
+                      <span>VAR: {formatCurrency(context.bov)}</span>
+                      <span>Fecha cálculo: {formatIsoToDisplay(context.calculationDate)}</span>
+                    </div>
                   </article>
 
-                  <article className="af-card af-editables-card">
-                    <div className="af-editables-heading">
-                      <span className="af-editables-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="m19.4 15-1.1.63a1 1 0 0 0-.47.95l.13 1.26a1 1 0 0 1-.93 1.1l-1.28.07a1 1 0 0 0-.84.62l-.48 1.17a1 1 0 0 1-1.22.57l-1.24-.38a1 1 0 0 0-.9.2l-.95.8a1 1 0 0 1-1.35 0l-.95-.8a1 1 0 0 0-.9-.2l-1.24.38a1 1 0 0 1-1.22-.57l-.48-1.17a1 1 0 0 0-.84-.62l-1.28-.07a1 1 0 0 1-.93-1.1l.13-1.26a1 1 0 0 0-.47-.95L4.6 15a1 1 0 0 1-.47-1.26l.5-1.16a1 1 0 0 0-.08-.95l-.7-1.06a1 1 0 0 1 .2-1.43l1-.84a1 1 0 0 0 .34-.9L5.24 6.1a1 1 0 0 1 .72-1.24l1.23-.33a1 1 0 0 0 .7-.65l.46-1.18a1 1 0 0 1 1.21-.6l1.25.35a1 1 0 0 0 .9-.22l.93-.82a1 1 0 0 1 1.36 0l.93.82a1 1 0 0 0 .9.22l1.25-.35a1 1 0 0 1 1.21.6l.46 1.18a1 1 0 0 0 .7.65l1.23.33a1 1 0 0 1 .72 1.24l-.15 1.3a1 1 0 0 0 .34.9l1 .84a1 1 0 0 1 .2 1.43l-.7 1.06a1 1 0 0 0-.08.95l.5 1.16A1 1 0 0 1 19.4 15Z"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                      <div className="af-editables-copy">
+                  {titular && (
+                    <article className="af-card af-side-card">
+                      <div className="af-mini-label">Titular</div>
+                      <div className="af-holder-name">{titular.fullName}</div>
+                      <div className="af-side-kpi-grid af-side-kpi-grid-3">
+                        <article className="af-side-kpi">
+                          <span>Nacimiento</span>
+                          <strong>{formatIsoToDisplay(titular.birthDate)}</strong>
+                        </article>
+                        <article className="af-side-kpi">
+                          <span>Sexo</span>
+                          <strong>{formatSex(titular.sex)}</strong>
+                        </article>
+                        <article className="af-side-kpi">
+                          <span>Edad</span>
+                          <strong>{titularAge ?? "-"}</strong>
+                        </article>
+                      </div>
+                      <div className="af-side-inline-values">
+                        <span>Invalidez: {formatInvalidity(titular.invalid)}</span>
+                        <span>Grupo familiar: {counts.total}</span>
+                      </div>
+                    </article>
+                  )}
+
+                  <article className="af-card af-side-card">
+                    <div className="af-mini-label">Grupo familiar</div>
+                    <div className="af-family-compact-list">
+                      {context.beneficiaries.map((beneficiary, index) => (
+                        <div key={`${beneficiary.type}-${beneficiary.fullName}-${index}`} className="af-family-compact-item">
+                          <span>{beneficiary.fullName}</span>
+                          <small>{formatBeneficiaryType(beneficiary.type)}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                </aside>
+
+                <section className="af-main-column">
+                  <article className="af-card af-control-panel">
+                    <div className="af-control-heading">
+                      <div>
                         <h2>Variables editables</h2>
-                        <p>
-                          Personalizá tu escenario eligiendo valores rápidos o ingresando los tuyos manualmente.
-                        </p>
+                        <p>Personalizá tu escenario y ejecutá el cálculo.</p>
                       </div>
                     </div>
 
                     <div className="af-form af-form-compact">
                       <label className="af-field af-editable-group">
                         <span className="af-editable-label">Aporte voluntario mensual</span>
-                        <div className="af-currency-input">
+                        <div className="af-currency-input af-currency-input-dark">
                           <span>$</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             list="voluntary-contribution-suggestions"
-                            step={1}
-                            min={0}
                             value={formState.voluntaryMonthlyAmount}
-                            onChange={(event) => updateFormField("voluntaryMonthlyAmount", event.target.value)}
+                            onChange={(event) => updateVoluntaryAmountInput(event.target.value)}
                           />
                         </div>
                         <div className="af-quick-button-row">
@@ -714,16 +663,16 @@ export default function HomePage() {
                             <button
                               type="button"
                               key={`voluntary-step-${step}`}
-                              className="af-quick-button"
+                              className="af-quick-button af-quick-button-dark"
                               onClick={() => applyVoluntaryContributionStep(step)}
                             >
-                              + ${formatNumber(step)}
+                              {formatContributionStepLabel(step)}
                             </button>
                           ))}
                         </div>
                         <datalist id="voluntary-contribution-suggestions">
                           {VOLUNTARY_CONTRIBUTION_STEPS.map((amount) => (
-                            <option key={`voluntary-amount-${amount}`} value={amount} />
+                            <option key={`voluntary-amount-${amount}`} value={formatAmountInput(amount)} />
                           ))}
                         </datalist>
                         {formErrors.voluntaryMonthlyAmount && (
@@ -734,26 +683,20 @@ export default function HomePage() {
                       <div className="af-editable-age-row">
                         <label className="af-field af-editable-group">
                           <span className="af-editable-label">Edad de jubilación</span>
-                          <input
-                            type="number"
-                            list="editable-age-options"
-                            min={65}
-                            step={1}
-                            value={formState.retirementAge}
-                            onChange={(event) => updateFormField("retirementAge", event.target.value)}
-                            onBlur={() => enforceAgeMinimum("retirementAge")}
-                          />
-                          <div className="af-quick-button-row">
-                            {EDITABLE_AGE_OPTIONS.map((age) => (
-                              <button
-                                type="button"
-                                key={`retirement-age-${age}`}
-                                className={`af-quick-button ${isQuickAgeSelected(formState.retirementAge, age) ? "af-quick-button-active" : ""}`}
-                                onClick={() => setAgeFromQuickPicker("retirementAge", age)}
-                              >
-                                {age} años
-                              </button>
-                            ))}
+                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad de jubilación">
+                            <span className="af-age-current">{formatAgePickerValue(formState.retirementAge)}</span>
+                            <div className="af-age-option-track">
+                              {EDITABLE_AGE_OPTIONS.map((age) => (
+                                <button
+                                  type="button"
+                                  key={`retirement-age-${age}`}
+                                  className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.retirementAge, age) ? "af-quick-button-active" : ""}`}
+                                  onClick={() => setAgeFromQuickPicker("retirementAge", age)}
+                                >
+                                  {age}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                           {formErrors.retirementAge && (
                             <span className="af-field-error">{formErrors.retirementAge}</span>
@@ -761,27 +704,21 @@ export default function HomePage() {
                         </label>
 
                         <label className="af-field af-editable-group">
-                          <span className="af-editable-label">Edad fin de aportes voluntarios</span>
-                          <input
-                            type="number"
-                            list="editable-age-options"
-                            min={65}
-                            step={1}
-                            value={formState.voluntaryEndAge}
-                            onChange={(event) => updateFormField("voluntaryEndAge", event.target.value)}
-                            onBlur={() => enforceAgeMinimum("voluntaryEndAge")}
-                          />
-                          <div className="af-quick-button-row">
-                            {EDITABLE_AGE_OPTIONS.map((age) => (
-                              <button
-                                type="button"
-                                key={`voluntary-end-age-${age}`}
-                                className={`af-quick-button ${isQuickAgeSelected(formState.voluntaryEndAge, age) ? "af-quick-button-active" : ""}`}
-                                onClick={() => setAgeFromQuickPicker("voluntaryEndAge", age)}
-                              >
-                                {age} años
-                              </button>
-                            ))}
+                          <span className="af-editable-label">Edad fin aportes</span>
+                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad fin de aportes">
+                            <span className="af-age-current">{formatAgePickerValue(formState.voluntaryEndAge)}</span>
+                            <div className="af-age-option-track">
+                              {EDITABLE_AGE_OPTIONS.map((age) => (
+                                <button
+                                  type="button"
+                                  key={`voluntary-end-age-${age}`}
+                                  className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.voluntaryEndAge, age) ? "af-quick-button-active" : ""}`}
+                                  onClick={() => setAgeFromQuickPicker("voluntaryEndAge", age)}
+                                >
+                                  {age}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                           {formErrors.voluntaryEndAge && (
                             <span className="af-field-error">{formErrors.voluntaryEndAge}</span>
@@ -789,19 +726,13 @@ export default function HomePage() {
                         </label>
                       </div>
 
-                      <datalist id="editable-age-options">
-                        {EDITABLE_AGE_OPTIONS.map((age) => (
-                          <option key={`editable-age-${age}`} value={age} />
-                        ))}
-                      </datalist>
-
                       <button
                         type="button"
-                        className="af-btn af-btn-primary"
+                        className="af-btn af-btn-primary af-calc-btn"
                         disabled={loading || counts.titulares !== 1}
                         onClick={() => void runSimulation()}
                       >
-                        {loading ? "Calculando..." : "Calcular"}
+                        {loading ? "Calculando..." : "Calcular proyección"}
                       </button>
                     </div>
 
@@ -813,105 +744,123 @@ export default function HomePage() {
 
                     {error && <div className="af-status af-status-error">{error}</div>}
                   </article>
-                </section>
 
-                <section className="af-grid af-grid-results">
-                  <article className="af-card af-results-card">
-                    <h2>Resultado de la simulación</h2>
+                  {!result ? (
+                    <article className="af-card af-empty-main-card">
+                      <div className="af-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M5 16.5V19h14v-2.5M6.5 14l3.8-4.3 3 2.7 4.2-5.4"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M16 7h3v3"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                      <h2>Cálculo de proyección</h2>
+                      <p>Configurá los valores del panel lateral y presioná calcular para ver resultados.</p>
+                    </article>
+                  ) : (
+                    <>
+                      <section className="af-main-kpis">
+                        <article className="af-card af-main-kpi-card af-main-kpi-primary">
+                          <span>Haber mensual proyectado</span>
+                          <strong>{formatCurrency(result.projectedBenefit)}</strong>
+                        </article>
+                        <article className="af-card af-main-kpi-card">
+                          <span>Capital final estimado</span>
+                          <strong>{formatCurrency(result.finalBalance)}</strong>
+                        </article>
+                      </section>
 
-                    {result ? (
-                      <>
-                        <div className="af-kpi-grid">
-                          <article className="af-kpi-card">
-                            <span>PPUU</span>
-                            <strong>{formatNumber(result.ppuu, 2)}</strong>
-                          </article>
-                          <article className="af-kpi-card af-kpi-card-primary">
-                            <span>Beneficio mensual proyectado</span>
-                            <strong>{formatCurrency(result.projectedBenefit)}</strong>
-                          </article>
-                          <article className="af-kpi-card">
-                            <span>Saldo final</span>
-                            <strong>{formatCurrency(result.finalBalance)}</strong>
-                          </article>
-                          <article className="af-kpi-card">
-                            <span>Fecha de jubilación</span>
-                            <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
-                          </article>
-                        </div>
-                        <div className="af-inline-note">
-                          La proyección considera tu composición familiar actual: {result.counts.spouses} cónyuge(s) y{" "}
-                          {result.counts.children} hijo(s).
-                        </div>
-                      </>
-                    ) : (
-                      <div className="af-inline-note">Todavía no hay resultados. Ejecutá el cálculo para generar la proyección.</div>
-                    )}
-                  </article>
+                      <section className="af-main-kpis af-main-kpis-secondary">
+                        <article className="af-card af-main-kpi-card">
+                          <span>PPUU</span>
+                          <strong>{formatNumber(result.ppuu, 2)}</strong>
+                        </article>
+                        <article className="af-card af-main-kpi-card">
+                          <span>Fecha de jubilación</span>
+                          <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
+                        </article>
+                      </section>
 
-                  <article className="af-card">
-                    <h2>Análisis What-If</h2>
-
-                    {whatIfRows.length > 0 ? (
-                      <div className="af-whatif-stack">
-                        <div className="af-whatif-meta">
-                          <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
-                          <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
-                        </div>
-
-                        <div className="af-whatif-chart">
-                          <div className="af-whatif-yaxis">
-                            {whatIfTickValues.map((value, index) => (
-                              <span key={`tick-${index}`}>{formatCurrency(value)}</span>
-                            ))}
+                      <article className="af-card af-chart-main-card">
+                        <div className="af-chart-header">
+                          <h2>Evolución What-If</h2>
+                          <div className="af-whatif-meta">
+                            <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
+                            <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
                           </div>
-                          <div className="af-whatif-bars-wrap">
-                            <div className="af-whatif-grid-lines" aria-hidden="true" />
-                            <div className="af-whatif-bars">
-                              {whatIfRows.map((row, index) => {
-                                const baseBenefit = whatIfRows[0]?.projectedBenefit ?? 0;
-                                const delta = row.projectedBenefit - baseBenefit;
-                                const ratio = maxWhatIfBenefit > 0 ? row.projectedBenefit / maxWhatIfBenefit : 0;
-                                const height = 16 + ratio * 108;
+                        </div>
 
-                                return (
-                                  <button
-                                    type="button"
-                                    key={`bar-${row.monthlyAmount}`}
-                                    className="af-whatif-bar-item"
-                                    onMouseEnter={() => setHoveredWhatIfIndex(index)}
-                                    onMouseLeave={() => setHoveredWhatIfIndex(null)}
-                                    onFocus={() => setHoveredWhatIfIndex(index)}
-                                    onBlur={() => setHoveredWhatIfIndex(null)}
-                                    aria-label={`${formatCurrency(row.monthlyAmount)}: beneficio ${formatCurrency(row.projectedBenefit)}`}
-                                  >
-                                    <div className="af-whatif-bar-track">
-                                      <div className="af-whatif-bar-fill" style={{ height: `${height}px` }} />
-                                    </div>
-                                    {hoveredWhatIfIndex === index && (
-                                      <div className="af-whatif-tooltip">
-                                        <strong>{formatCurrency(row.monthlyAmount)}</strong>
-                                        <span>Beneficio: {formatCurrency(row.projectedBenefit)}</span>
-                                        <span>
-                                          Variación: {delta >= 0 ? "+" : ""}
-                                          {formatCurrency(delta)}
-                                        </span>
+                        {whatIfRows.length > 0 ? (
+                          <div className="af-whatif-chart">
+                            <div className="af-whatif-yaxis">
+                              {whatIfTickValues.map((value, index) => (
+                                <span key={`tick-${index}`}>{formatCurrency(value)}</span>
+                              ))}
+                            </div>
+                            <div className="af-whatif-bars-wrap">
+                              <div className="af-whatif-grid-lines" aria-hidden="true" />
+                              <div className="af-whatif-bars">
+                                {whatIfRows.map((row, index) => {
+                                  const baseBenefit = whatIfRows[0]?.projectedBenefit ?? 0;
+                                  const delta = row.projectedBenefit - baseBenefit;
+                                  const ratio = maxWhatIfBenefit > 0 ? row.projectedBenefit / maxWhatIfBenefit : 0;
+                                  const height = 16 + ratio * 108;
+
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={`bar-${row.monthlyAmount}`}
+                                      className="af-whatif-bar-item"
+                                      onMouseEnter={() => setHoveredWhatIfIndex(index)}
+                                      onMouseLeave={() => setHoveredWhatIfIndex(null)}
+                                      onFocus={() => setHoveredWhatIfIndex(index)}
+                                      onBlur={() => setHoveredWhatIfIndex(null)}
+                                      aria-label={`${formatCurrency(row.monthlyAmount)}: beneficio ${formatCurrency(row.projectedBenefit)}`}
+                                    >
+                                      <div className="af-whatif-bar-track">
+                                        <div className="af-whatif-bar-fill" style={{ height: `${height}px` }} />
                                       </div>
-                                    )}
-                                    <span>{formatKLabel(row.monthlyAmount)}</span>
-                                  </button>
-                                );
-                              })}
+                                      {hoveredWhatIfIndex === index && (
+                                        <div className="af-whatif-tooltip">
+                                          <strong>{formatCurrency(row.monthlyAmount)}</strong>
+                                          <span>Beneficio: {formatCurrency(row.projectedBenefit)}</span>
+                                          <span>
+                                            Variación: {delta >= 0 ? "+" : ""}
+                                            {formatCurrency(delta)}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <span>{formatKLabel(row.monthlyAmount)}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="af-inline-note">El gráfico se habilita al ejecutar la simulación.</div>
-                    )}
-                  </article>
+                        ) : (
+                          <div className="af-inline-note">El gráfico se habilita al ejecutar la simulación.</div>
+                        )}
+                      </article>
+
+                      <article className="af-main-disclaimer">
+                        Este cálculo es estimativo y depende de supuestos actuariales. La composición familiar usada es:{" "}
+                        {result.counts.spouses} cónyuge(s) y {result.counts.children} hijo(s).
+                      </article>
+                    </>
+                  )}
                 </section>
-              </>
+              </section>
             )}
           </section>
         )}
@@ -922,7 +871,7 @@ export default function HomePage() {
 
 function parseEditableFormState(state: EditableFormState): EditableSimulationValues {
   return {
-    voluntaryMonthlyAmount: toFiniteNumber(state.voluntaryMonthlyAmount),
+    voluntaryMonthlyAmount: parseAmountInput(state.voluntaryMonthlyAmount),
     retirementAge: toFiniteNumber(state.retirementAge),
     voluntaryEndAge: toFiniteNumber(state.voluntaryEndAge)
   };
@@ -931,6 +880,45 @@ function parseEditableFormState(state: EditableFormState): EditableSimulationVal
 function toFiniteNumber(rawValue: string): number {
   const parsed = Number(rawValue);
   return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function parseAmountInput(rawValue: string): number {
+  const digits = rawValue.replace(/\D/g, "");
+  if (!digits) {
+    return Number.NaN;
+  }
+
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function normalizeAmountInput(rawValue: string): string {
+  const digits = rawValue.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  const parsed = Number(digits);
+  if (!Number.isFinite(parsed)) {
+    return "";
+  }
+
+  return formatAmountInput(parsed);
+}
+
+function formatAmountInput(value: number): string {
+  const safe = Math.max(0, Math.trunc(value));
+  return formatNumber(safe);
+}
+
+function formatContributionStepLabel(value: number): string {
+  if (value >= 1000) {
+    const kValue = value / 1000;
+    const suffix = Number.isInteger(kValue) ? String(kValue) : kValue.toFixed(1);
+    return `+$${suffix}k`;
+  }
+
+  return `+$${formatNumber(value)}`;
 }
 
 function buildWhatIfRows(baseInput: SimulationInput, baseResult: SimulationResult): WhatIfRow[] {
@@ -1025,6 +1013,35 @@ function formatIsoToDisplay(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
+function calculateAgeFromIso(iso: string): number | null {
+  if (!ISO_DATE_REGEX.test(iso)) {
+    return null;
+  }
+
+  const [year, month, day] = iso.split("-").map(Number);
+  const today = new Date();
+
+  const candidate = new Date(year, month - 1, day);
+  if (
+    candidate.getFullYear() !== year ||
+    candidate.getMonth() !== month - 1 ||
+    candidate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+
+  if (!hasBirthdayPassed) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}
+
 function formatNumber(value: number, fractionDigits = 0): string {
   return new Intl.NumberFormat("es-AR", {
     minimumFractionDigits: fractionDigits,
@@ -1046,6 +1063,15 @@ function formatKLabel(value: number): string {
   }
 
   return `${formatNumber(value / 1000)}k`;
+}
+
+function formatAgePickerValue(rawValue: string): string {
+  const parsed = toFiniteNumber(rawValue);
+  if (!Number.isFinite(parsed)) {
+    return "--";
+  }
+
+  return String(Math.max(0, Math.trunc(parsed)));
 }
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;

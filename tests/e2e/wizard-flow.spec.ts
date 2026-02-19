@@ -159,10 +159,10 @@ test("flujo afiliado final con OTP, simulación y logout", async ({ page }) => {
   await expect(page.locator(".af-toolbar-copy strong")).toHaveText("Alicia Moreno");
 
   await page.getByLabel(/aporte voluntario mensual/i).fill("15000");
-  await page.getByRole("button", { name: /^calcular$/i }).click();
+  await page.getByRole("button", { name: /^calcular/i }).click();
 
-  await expect(page.getByText(/beneficio mensual proyectado/i)).toBeVisible();
-  await expect(page.getByText(/análisis what-if/i)).toBeVisible();
+  await expect(page.getByText(/haber mensual proyectado/i)).toBeVisible();
+  await expect(page.getByText(/evolución what-if/i)).toBeVisible();
 
   await page.getByRole("button", { name: /cerrar sesión/i }).click();
 

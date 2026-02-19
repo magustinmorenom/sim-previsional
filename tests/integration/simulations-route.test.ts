@@ -21,6 +21,28 @@ describe("POST /api/v1/simulations/run", () => {
     expect(typeof body.projectedBenefit).toBe("number");
   });
 
+  it("responde 200 para aporte voluntario mensual alto", async () => {
+    const request = new Request("http://localhost/api/v1/simulations/run", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...defaultSimulationInput,
+        voluntaryContribution: {
+          ...defaultSimulationInput.voluntaryContribution,
+          monthlyAmount: 800000
+        }
+      })
+    });
+
+    const response = await runSimulationRoute(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(typeof body.ppuu).toBe("number");
+  });
+
   it("responde 422 cuando n > 12", async () => {
     const beneficiaries = Array.from({ length: 13 }, (_, idx) => ({
       type: idx === 0 ? "T" : "H",
