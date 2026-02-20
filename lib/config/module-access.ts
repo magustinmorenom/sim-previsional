@@ -51,6 +51,15 @@ const BASE_MODULES: ModuleDescriptor[] = [
     enabled: true
   },
   {
+    key: "chatbot-cps",
+    title: "Chatbot CPS",
+    description: "Asistente documental con búsqueda sobre normativa y procesos.",
+    path: "/app/chatbot",
+    visibility: "public",
+    enabled: true,
+    badge: "IA"
+  },
+  {
     key: "simulador-previsional",
     title: "Simulador previsional",
     description: "Proyección previsional personalizada del afiliado.",
