@@ -1113,3 +1113,497 @@ textarea {
     min-width: 460px;
   }
 }
+
+/* App anexa */
+.anx-shell {
+  width: min(1240px, 100%);
+  margin: 18px auto;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.96) 100%);
+  box-shadow: 0 20px 42px rgba(9, 41, 77, 0.12);
+  display: grid;
+  gap: 14px;
+}
+
+.anx-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.anx-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: #5d7898;
+  font-weight: 800;
+}
+
+.anx-brand-link {
+  margin-top: 3px;
+  display: inline-block;
+  color: #0b2b55;
+  text-decoration: none;
+  font-family: "Sora", "Manrope", sans-serif;
+  font-size: clamp(24px, 2.6vw, 34px);
+  letter-spacing: -0.02em;
+}
+
+.anx-subtitle {
+  margin: 6px 0 0;
+  color: #43607f;
+  font-size: 13px;
+  max-width: 760px;
+}
+
+.anx-session-pill {
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: #e8f2ff;
+  border: 1px solid #bfd5f1;
+  color: #1f4d83;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.anx-topnav {
+  border: 1px solid #d2e2f4;
+  border-radius: 14px;
+  background: #f3f8ff;
+}
+
+.anx-topnav-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+}
+
+.anx-topnav-link {
+  min-width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  border: 1px solid #d2e2f4;
+  background: #ffffff;
+  color: #24486f;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.anx-topnav-link small {
+  border-radius: 999px;
+  background: #ecf4ff;
+  color: #1b4a82;
+  padding: 2px 7px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.anx-topnav-link-active {
+  border-color: #2f67a7;
+  background: #1f4c81;
+  color: #ffffff;
+}
+
+.anx-topnav-link-active small {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.anx-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  color: #5f7894;
+  font-size: 12px;
+}
+
+.anx-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.anx-breadcrumb-item a {
+  color: #2a578c;
+  text-decoration: none;
+}
+
+.anx-breadcrumb-current {
+  color: #0f2f58;
+  font-weight: 700;
+}
+
+.anx-breadcrumb-sep {
+  color: #8ea6c1;
+}
+
+.anx-content {
+  display: grid;
+  gap: 12px;
+}
+
+.anx-panel {
+  border: 1px solid #d4e1ef;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(9, 41, 77, 0.08);
+  padding: 14px;
+}
+
+.anx-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.anx-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.anx-grid-narrow {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.anx-section-header h1,
+.anx-hero-card h1,
+.anx-auth-panel h1 {
+  margin: 0;
+  font-family: "Sora", "Manrope", sans-serif;
+  font-size: clamp(22px, 2.4vw, 30px);
+  color: #0f2e56;
+}
+
+.anx-section-header p,
+.anx-hero-card p,
+.anx-auth-panel p {
+  margin: 5px 0 0;
+  color: #48617d;
+  font-size: 13px;
+}
+
+.anx-source {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6a839e;
+}
+
+.anx-hero-tags {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.anx-hero-tags span,
+.anx-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a4b82;
+  border-radius: 999px;
+  padding: 5px 9px;
+  border: 1px solid #c7daf0;
+  background: #edf5ff;
+}
+
+.anx-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.anx-module-card {
+  color: inherit;
+  text-decoration: none;
+  display: grid;
+  gap: 8px;
+  transition: transform 0.15s ease;
+}
+
+.anx-module-card:hover {
+  transform: translateY(-1px);
+}
+
+.anx-module-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.anx-module-card h2,
+.anx-doc-card h2,
+.anx-contact-card h2,
+.anx-guide-card h2,
+.anx-rate-card h2,
+.anx-placeholder-card h2,
+.anx-faq-group h2,
+.anx-loan-card h3 {
+  margin: 0;
+  color: #113660;
+  font-family: "Sora", "Manrope", sans-serif;
+  font-size: 18px;
+}
+
+.anx-module-card p,
+.anx-doc-card p,
+.anx-contact-card p,
+.anx-guide-card p,
+.anx-rate-card p,
+.anx-placeholder-card p,
+.anx-faq-group p,
+.anx-loan-card p {
+  margin: 0;
+  color: #48617d;
+  font-size: 13px;
+}
+
+.anx-module-cta {
+  margin-top: 2px;
+  color: #1e4f87;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.anx-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.anx-filters label,
+.anx-form-grid label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: #35506d;
+  font-weight: 700;
+}
+
+.anx-filters input,
+.anx-filters select,
+.anx-form-grid input {
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid #b7cbdf;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #102538;
+  background: #ffffff;
+}
+
+.anx-results-count {
+  margin: 0;
+  color: #5a7390;
+  font-size: 12px;
+}
+
+.anx-table-wrap {
+  overflow-x: auto;
+}
+
+.anx-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+}
+
+.anx-table th,
+.anx-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e0ebf6;
+  text-align: left;
+  vertical-align: top;
+  font-size: 12px;
+  color: #25405f;
+}
+
+.anx-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5e7793;
+  font-size: 11px;
+}
+
+.anx-table-title {
+  font-weight: 700;
+  color: #123659;
+}
+
+.anx-link-btn,
+.anx-primary-btn,
+.anx-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.anx-link-btn,
+.anx-primary-btn {
+  color: #ffffff;
+  background: #174a8b;
+}
+
+.anx-link-btn:hover,
+.anx-primary-btn:hover {
+  background: #103f77;
+}
+
+.anx-link-btn-wide {
+  width: 100%;
+}
+
+.anx-ghost-btn {
+  color: #1d4c83;
+  background: #eef4fc;
+  border-color: #d0dded;
+}
+
+.anx-status {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid #cfe0f3;
+  background: #f3f8ff;
+  color: #355370;
+  font-size: 12px;
+}
+
+.anx-status-error {
+  border-color: #f2c4bf;
+  background: #ffefed;
+  color: #9f2a1f;
+}
+
+.anx-guide-grid,
+.anx-doc-grid,
+.anx-contact-grid,
+.anx-loan-grid,
+.anx-faq-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.anx-guide-grid,
+.anx-doc-grid,
+.anx-contact-grid,
+.anx-loan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.anx-guide-card,
+.anx-contact-card,
+.anx-doc-card,
+.anx-loan-card {
+  display: grid;
+  gap: 10px;
+}
+
+.anx-guide-card h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #305476;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.anx-check-list,
+.anx-dot-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  color: #35506d;
+  font-size: 12px;
+}
+
+.anx-check-list li::marker {
+  content: "✓ ";
+}
+
+.anx-faq-list {
+  display: grid;
+  gap: 8px;
+}
+
+.anx-faq-list details {
+  border: 1px solid #d8e4f1;
+  border-radius: 10px;
+  padding: 9px;
+}
+
+.anx-faq-list summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #163f6b;
+  font-size: 13px;
+}
+
+.anx-faq-list p {
+  margin-top: 6px;
+}
+
+.anx-form-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.anx-auth-panel {
+  display: grid;
+  gap: 11px;
+}
+
+.anx-dev-note {
+  color: #2f5c88;
+  font-size: 11px;
+}
+
+.anx-rate-card small,
+.anx-loan-card span,
+.anx-contact-card small,
+.anx-guide-card small {
+  color: #67829e;
+  font-size: 11px;
+}
+
+.anx-loan-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .anx-shell {
+    margin: 10px;
+    padding: 10px;
+  }
+
+  .anx-header {
+    flex-direction: column;
+  }
+
+  .anx-session-pill {
+    align-self: flex-start;
+  }
+}

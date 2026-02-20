@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Simulador Previsional CEER 2025",
+  title: "Plataforma de Servicios SPS",
   description:
-    "Simulador previsional para afiliados con autenticación OTP, datos remotos y cálculo actuarial en pantalla única"
+    "App anexa a WordPress con biblioteca documental, procesos, consultas y subapps de simulación para afiliados"
 };
 
 export default function RootLayout({

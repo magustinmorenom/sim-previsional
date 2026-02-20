@@ -21,6 +21,10 @@ Migración del archivo Excel/VBA `proyectador de beneficios CEER vf 2025.xlsm` a
 - Wizard UX de 6 pasos con explicaciones por sección.
 - Modo avanzado con trazabilidad Hoja1-like y Hoja2-like.
 - Exportación PDF de resultados.
+- Módulo de simulación de préstamos (`sim-guion-prestamos`) con:
+  - UI privada avanzada en `/app/simuladores/prestamos` (feature flag `ENABLE_PRESTAMOS_UI_V2`)
+  - BFF interno `/api/v1/public/prestamos/*`
+  - Mock API con JSON server para desarrollo local (`npm run mock:prestamos`)
 
 ## Criterios de paridad (caso base)
 
@@ -66,6 +70,28 @@ npm test
 npm run test:e2e
 ```
 
+## Simulador de préstamos (fase mock)
+
+1. Levantar mock API:
+
+```bash
+npm run mock:prestamos
+```
+
+2. Configurar entorno:
+
+```bash
+PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/prestamos/
+ENABLE_PRESTAMOS_SIMULATION=true
+ENABLE_PRESTAMOS_UI_V2=true
+```
+
+3. Levantar app:
+
+```bash
+npm run dev:prestamos
+```
+
 ## Regla de operación exacta
 
 El cálculo exacto 1:1 con VBA se habilita hasta `n <= 12` por complejidad exponencial (`2^n`).
@@ -80,4 +106,3 @@ npm run extract:data
 Origen esperado por defecto:
 
 - `/Users/agustin/Downloads/proyectador de beneficios CEER vf 2025.xlsm`
-
