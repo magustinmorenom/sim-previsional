@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@200;500&family=Manrope:wght@400;500;600;700;800&display=swap");
 
 :root {
   --bg-top: #f2f6fb;
@@ -19,6 +19,12 @@
   --danger-bg: #ffe8e5;
   --shadow: 0 18px 40px rgba(9, 41, 77, 0.12);
   --card-shadow: 0 10px 28px rgba(9, 41, 77, 0.08);
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-heading: "Inter", "Segoe UI", sans-serif;
+  --font-ui: "Manrope", "Segoe UI", sans-serif;
+  --simulator-accent: #a12d52;
+  --simulator-accent-strong: #8a2648;
+  --simulator-accent-soft: #f8e9ef;
 }
 
 * {
@@ -33,12 +39,28 @@ body {
 }
 
 body {
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 200;
   background:
     radial-gradient(circle at 12% 8%, rgba(23, 74, 139, 0.14), transparent 36%),
     radial-gradient(circle at 92% 86%, rgba(15, 57, 112, 0.16), transparent 42%),
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
   color: var(--text-main);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+}
+
+p {
+  font-family: var(--font-body);
+  font-weight: 200;
 }
 
 input,
@@ -58,23 +80,6 @@ textarea {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-.af-shell {
-  min-height: 100vh;
-  padding: 14px;
-}
-
-.af-surface {
-  width: min(1240px, 100%);
-  margin: 0 auto;
-  border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff 0%, #fafdff 100%);
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  padding: 16px;
-  display: grid;
-  gap: 12px;
 }
 
 .af-header {
@@ -97,12 +102,6 @@ textarea {
   color: var(--text-soft);
   max-width: 700px;
   font-size: 13px;
-}
-
-.af-logo {
-  width: clamp(74px, 8.5vw, 104px);
-  height: auto;
-  object-fit: contain;
 }
 
 .af-card {
@@ -1069,22 +1068,8 @@ textarea {
 }
 
 @media (max-width: 980px) {
-  .af-shell {
-    padding: 12px;
-  }
-
-  .af-surface {
-    border-radius: 16px;
-    padding: 12px;
-  }
-
   .af-header {
     flex-direction: column;
-  }
-
-  .af-logo {
-    width: 84px;
-    align-self: flex-end;
   }
 
   .af-grid-context,
@@ -1923,5 +1908,377 @@ textarea {
   .anx-chat-send {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* UI refresh */
+.anx-shell {
+  width: min(1280px, 100%);
+  margin: 20px auto;
+  padding: 20px;
+  gap: 18px;
+  border-radius: 24px;
+  box-shadow: 0 16px 34px rgba(10, 38, 70, 0.1);
+}
+
+.anx-header {
+  align-items: center;
+  gap: 16px;
+}
+
+.anx-brand {
+  min-width: 0;
+}
+
+.anx-brand-link {
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: #0f2f58;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: clamp(26px, 2.6vw, 36px);
+  letter-spacing: -0.02em;
+}
+
+.anx-brand-link span {
+  line-height: 1.1;
+}
+
+.anx-brand-logo {
+  width: clamp(48px, 5.8vw, 62px);
+  height: auto;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgba(12, 41, 75, 0.22);
+}
+
+.anx-content {
+  gap: 16px;
+}
+
+.af-header h1,
+.af-card h2,
+.anx-brand-link,
+.anx-section-header h1,
+.anx-hero-card h1,
+.anx-auth-panel h1,
+.anx-module-card h2,
+.anx-doc-card h2,
+.anx-contact-card h2,
+.anx-guide-card h2,
+.anx-rate-card h2,
+.anx-placeholder-card h2,
+.anx-faq-group h2,
+.anx-loan-card h3,
+.anx-chat-head h2 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+}
+
+.anx-content-transition {
+  animation: anx-fade-in 0.34s ease both;
+}
+
+.anx-panel {
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 8px 18px rgba(10, 36, 64, 0.08);
+}
+
+.anx-topnav {
+  border-radius: 16px;
+  background: #f5f9ff;
+}
+
+.anx-topnav-scroll {
+  padding: 10px;
+  gap: 10px;
+}
+
+.anx-topnav-link {
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.anx-topnav-link:hover {
+  transform: translateY(-1px);
+}
+
+.anx-topnav-link-label {
+  line-height: 1;
+}
+
+.anx-topnav-link small {
+  font-family: var(--font-ui);
+}
+
+.anx-module-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.anx-module-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.anx-topnav-link-icon {
+  width: 17px;
+  height: 17px;
+  color: currentColor;
+}
+
+.anx-topnav-link-simulator {
+  border-color: #e6c2d1;
+  background: #fff7fa;
+  color: #7f2745;
+}
+
+.anx-topnav-link-simulator small {
+  border-color: #ebcad8;
+  background: #f8e6ed;
+  color: #7f2745;
+}
+
+.anx-topnav-link-simulator:hover {
+  border-color: #c97592;
+  box-shadow: 0 8px 14px rgba(161, 45, 82, 0.14);
+}
+
+.anx-topnav-link-simulator.anx-topnav-link-active {
+  border-color: var(--simulator-accent);
+  background: var(--simulator-accent);
+  color: #ffffff;
+}
+
+.anx-topnav-link-simulator.anx-topnav-link-active small {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.anx-module-grid,
+.anx-guide-grid,
+.anx-doc-grid,
+.anx-contact-grid,
+.anx-loan-grid,
+.anx-faq-groups {
+  gap: 14px;
+}
+
+.anx-module-card {
+  gap: 11px;
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease,
+    border-color 0.24s ease,
+    background-color 0.24s ease;
+}
+
+.anx-module-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 24px rgba(16, 44, 78, 0.12);
+}
+
+.anx-module-card-top {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.anx-module-title-wrap {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.anx-module-card-icon {
+  width: 21px;
+  height: 21px;
+  color: #1f4f84;
+  border-radius: 10px;
+  background: #eef4ff;
+  padding: 4px;
+  flex: 0 0 auto;
+}
+
+.anx-module-card-simulator {
+  border-color: #e8c4d2;
+  background: linear-gradient(180deg, #fffafd 0%, #fff5f8 100%);
+}
+
+.anx-module-card-simulator .anx-module-card-icon {
+  color: var(--simulator-accent);
+  background: #f7e7ed;
+}
+
+.anx-module-card-simulator .anx-badge {
+  border-color: #d4a9ba;
+  background: #f7e8ee;
+  color: #7e2745;
+}
+
+.anx-module-card-simulator .anx-module-cta {
+  color: var(--simulator-accent);
+}
+
+.anx-link-btn,
+.anx-primary-btn,
+.anx-ghost-btn,
+.anx-badge,
+.anx-session-pill,
+.anx-topnav-link,
+.af-btn,
+.af-quick-button,
+.af-age-current,
+button {
+  font-family: var(--font-ui);
+}
+
+.anx-link-btn,
+.anx-primary-btn,
+.af-btn-primary {
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.anx-link-btn:hover,
+.anx-primary-btn:hover,
+.af-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+.af-app-shell {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.af-header {
+  gap: 10px;
+}
+
+.af-header h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(27px, 2.5vw, 34px);
+  font-weight: 500;
+}
+
+.af-header p {
+  margin-top: 4px;
+  max-width: 560px;
+  font-size: 14px;
+}
+
+.af-card,
+.af-btn,
+.af-quick-button,
+.af-whatif-bar-fill {
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.af-content-stack,
+.af-dashboard-grid,
+.af-side-column,
+.af-main-column,
+.af-main-kpis,
+.af-editable-age-row {
+  gap: 14px;
+}
+
+.af-auth-grid {
+  grid-template-columns: minmax(280px, 620px);
+}
+
+.af-toolbar {
+  padding: 10px 12px;
+}
+
+.af-control-panel {
+  padding: 16px;
+  gap: 14px;
+}
+
+@keyframes anx-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anx-content-transition {
+    animation: none;
+  }
+
+  .anx-module-card,
+  .anx-link-btn,
+  .anx-primary-btn,
+  .anx-ghost-btn,
+  .anx-topnav-link,
+  .af-card,
+  .af-btn,
+  .af-quick-button,
+  .af-whatif-bar-fill {
+    transition: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .anx-shell {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .anx-panel,
+  .af-app-shell {
+    padding: 14px;
+  }
+
+  .anx-brand-link {
+    gap: 10px;
+    font-size: clamp(24px, 6vw, 30px);
+  }
+
+  .anx-brand-logo {
+    width: 46px;
+  }
+
+  .anx-header {
+    align-items: flex-start;
+  }
+
+  .anx-session-pill {
+    align-self: flex-start;
   }
 }

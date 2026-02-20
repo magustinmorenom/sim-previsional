@@ -20,7 +20,6 @@ export default function BibliotecaPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -41,7 +40,6 @@ export default function BibliotecaPage() {
         }
 
         setDocuments(payload.data);
-        setSource(payload.source);
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "No fue posible cargar la biblioteca.";
         setError(message);
@@ -89,8 +87,6 @@ export default function BibliotecaPage() {
     <article className="anx-panel anx-stack">
       <header className="anx-section-header">
         <h1>Biblioteca de documentos</h1>
-        <p>Buscá, filtrá y descargá archivos operativos desde un repositorio unificado.</p>
-        {source && <small className="anx-source">Fuente: {source}</small>}
       </header>
 
       <section className="anx-filters">

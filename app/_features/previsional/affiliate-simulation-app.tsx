@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import {
   buildSimulationInputFromContext,
   validateEditableSimulationValues,
@@ -422,23 +421,12 @@ export default function HomePage() {
   }
 
   return (
-    <main className="af-shell">
-      <section className="af-surface">
+    <section className="anx-panel af-app-shell">
         <header className="af-header">
           <div>
             <h1>Simulador Previsional</h1>
-            <p>
-              Versión afiliado final con autenticación OTP, datos automáticos y simulación en una única pantalla.
-            </p>
+            <p>Acceso y simulación en una sola vista.</p>
           </div>
-          <Image
-            src="/cps-logo.svg"
-            alt="CPS PCEER"
-            className="af-logo"
-            width={130}
-            height={130}
-            priority
-          />
         </header>
 
         {sessionLoading && (
@@ -864,8 +852,7 @@ export default function HomePage() {
             )}
           </section>
         )}
-      </section>
-    </main>
+    </section>
   );
 }
 

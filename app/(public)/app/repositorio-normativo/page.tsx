@@ -18,7 +18,6 @@ function formatDate(value: string): string {
 
 export default function RepositorioNormativoPage() {
   const [items, setItems] = useState<DocumentItem[]>([]);
-  const [source, setSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +35,6 @@ export default function RepositorioNormativoPage() {
         }
 
         setItems(payload.data);
-        setSource(payload.source);
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "No fue posible cargar el repositorio normativo.";
         setError(message);
@@ -50,8 +48,6 @@ export default function RepositorioNormativoPage() {
     <section className="anx-stack">
       <article className="anx-panel anx-section-header">
         <h1>Repositorio normativo</h1>
-        <p>Acceso directo a ley, reglamentos y resoluciones de referencia operativa.</p>
-        {source && <small className="anx-source">Fuente: {source}</small>}
       </article>
 
       {loading && <p className="anx-status">Cargando normativa...</p>}

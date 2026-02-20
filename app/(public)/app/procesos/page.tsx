@@ -5,7 +5,6 @@ import type { ContentResponse, ProcessGuide } from "@/lib/types/content";
 
 export default function ProcesosPage() {
   const [guides, setGuides] = useState<ProcessGuide[]>([]);
-  const [source, setSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +22,6 @@ export default function ProcesosPage() {
         }
 
         setGuides(payload.data);
-        setSource(payload.source);
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "No fue posible cargar los procesos.";
         setError(message);
@@ -37,8 +35,6 @@ export default function ProcesosPage() {
     <section className="anx-stack">
       <article className="anx-panel anx-section-header">
         <h1>Procesos y guías</h1>
-        <p>Revisá el recorrido recomendado para cada trámite y checklist mínimo de presentación.</p>
-        {source && <small className="anx-source">Fuente: {source}</small>}
       </article>
 
       {loading && <p className="anx-status">Cargando procesos...</p>}

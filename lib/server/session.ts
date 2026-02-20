@@ -125,13 +125,19 @@ export function setAuthSessionCookie(
   setSignedCookie(response, getAuthSessionCookieName(), state, SESSION_MAX_AGE_SECONDS);
 }
 
-export function getAuthSessionFromRequest(request: Request): AuthSessionState | null {
-  const raw = readCookieFromRequest(request, getAuthSessionCookieName());
-  if (!raw) {
+export function parseAuthSessionCookieValue(rawValue: string | null | undefined): AuthSessionState | null {
+  if (!rawValue) {
     return null;
   }
 
-  const payload = decodeSigned<AuthSessionState>(raw);
+  let decodedValue = rawValue;
+  try {
+    decodedValue = decodeURIComponent(rawValue);
+  } catch {
+    decodedValue = rawValue;
+  }
+
+  const payload = decodeSigned<AuthSessionState>(decodedValue);
   if (!payload) {
     return null;
   }
@@ -145,6 +151,11 @@ export function getAuthSessionFromRequest(request: Request): AuthSessionState | 
   }
 
   return payload;
+}
+
+export function getAuthSessionFromRequest(request: Request): AuthSessionState | null {
+  const raw = readCookieFromRequest(request, getAuthSessionCookieName());
+  return parseAuthSessionCookieValue(raw);
 }
 
 export function clearAuthSessionCookie(response: NextResponse): void {

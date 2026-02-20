@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ModuleIcon } from "@/app/_anexo/module-icons";
 import type { ModuleDescriptor } from "@/lib/types/content";
 
 interface TopNavProps {
@@ -24,6 +25,10 @@ function isActivePath(pathname: string, target: string): boolean {
   return normalizedPathname.startsWith(`${normalizedTarget}/`);
 }
 
+function isSimulatorModule(module: ModuleDescriptor): boolean {
+  return module.key === "simulador-previsional" || module.key === "simulador-prestamos";
+}
+
 export function TopNav({ modules, hasSession }: TopNavProps) {
   const pathname = usePathname();
 
@@ -36,14 +41,17 @@ export function TopNav({ modules, hasSession }: TopNavProps) {
           const destination = isPrivate && !hasSession
             ? `/app/acceso?next=${encodeURIComponent(module.path)}`
             : module.path;
+          const simulatorClass = isSimulatorModule(module) ? "anx-topnav-link-simulator" : "";
+          const activeClass = active ? "anx-topnav-link-active" : "";
 
           return (
             <Link
               key={module.key}
               href={destination}
-              className={`anx-topnav-link ${active ? "anx-topnav-link-active" : ""}`}
+              className={`anx-topnav-link ${simulatorClass} ${activeClass}`.trim()}
             >
-              <span>{module.title}</span>
+              <ModuleIcon moduleKey={module.key} className="anx-topnav-link-icon" />
+              <span className="anx-topnav-link-label">{module.title}</span>
               {isPrivate && <small>{hasSession ? "Privado" : "Login"}</small>}
             </Link>
           );

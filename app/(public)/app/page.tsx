@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { ModuleIcon } from "@/app/_anexo/module-icons";
 import { getNavigationModules } from "@/lib/config/module-access";
 
 const DEFAULT_SESSION_COOKIE_NAME = "sp_session";
@@ -17,14 +18,10 @@ export default async function AppHomePage() {
     <section className="anx-grid">
       <article className="anx-hero-card anx-panel">
         <h1>App de servicios para afiliados</h1>
-        <p>
-          Esta experiencia concentra trámites, documentos, procesos y simulaciones en una interfaz simple.
-          Blog, novedades y misión institucional quedan en WordPress.
-        </p>
         <div className="anx-hero-tags">
-          <span>Biblioteca única</span>
-          <span>Procesos guiados</span>
-          <span>Subapps de simulación</span>
+          <span>Biblioteca</span>
+          <span>Procesos</span>
+          <span>Simuladores</span>
         </div>
       </article>
 
@@ -34,11 +31,15 @@ export default async function AppHomePage() {
           const href = isPrivate && !hasSession
             ? `/app/acceso?next=${encodeURIComponent(module.path)}`
             : module.path;
+          const simulatorClass = module.key.startsWith("simulador-") ? "anx-module-card-simulator" : "";
 
           return (
-            <Link key={module.key} href={href} className="anx-module-card anx-panel">
+            <Link key={module.key} href={href} className={`anx-module-card anx-panel ${simulatorClass}`.trim()}>
               <div className="anx-module-card-top">
-                <h2>{module.title}</h2>
+                <div className="anx-module-title-wrap">
+                  <ModuleIcon moduleKey={module.key} className="anx-module-card-icon" />
+                  <h2>{module.title}</h2>
+                </div>
                 {module.badge && <span className="anx-badge">{module.badge}</span>}
               </div>
               <p>{module.description}</p>
