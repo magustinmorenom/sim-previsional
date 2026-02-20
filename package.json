@@ -3,18 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean:next": "rm -rf .next tsconfig.tsbuildinfo",
     "dev": "next dev",
+    "dev:prestamos": "PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/prestamos/ PRESTAMOS_API_KEY= ENABLE_PRESTAMOS_SIMULATION=true ENABLE_PRESTAMOS_UI_V2=true npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "extract:data": "python3 scripts/extract_excel_data.py"
+    "extract:data": "python3 scripts/extract_excel_data.py",
+    "smtp:test": "tsx scripts/test-smtp-connection.ts",
+    "mock:prestamos": "node sim-guion-prestamos/mock/server.js"
+  },
+  "engines": {
+    "node": ">=18.18.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "next": "^15.5.12",
+    "nodemailer": "^6.10.1",
     "pdf-lib": "1.17.1",
     "react": "19.0.0",
     "react-day-picker": "^9.13.2",
@@ -25,10 +33,12 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "22.10.5",
+    "@types/nodemailer": "^6.4.22",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",
     "eslint": "9.17.0",
     "eslint-config-next": "15.1.6",
+    "json-server": "^0.17.4",
     "tsx": "4.19.2",
     "typescript": "5.7.2",
     "vitest": "2.1.8"

@@ -63,14 +63,6 @@ export const simulationInputSchema = z
       });
     }
 
-    if (value.voluntaryContribution.monthlyAmount > value.mandatoryContribution.endAge) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "El importe mensual voluntario no puede ser mayor que la edad fin de aportes obligatorios.",
-        path: ["voluntaryContribution", "monthlyAmount"]
-      });
-    }
-
     const titularCount = value.beneficiaries.filter((b) => b.type === "T").length;
     if (titularCount > 1) {
       ctx.addIssue({

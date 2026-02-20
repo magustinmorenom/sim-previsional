@@ -1,0 +1,140 @@
+{
+  "catalogo": {
+    "success": true,
+    "data": {
+      "lineas": [
+        {
+          "id": 1,
+          "codigo": "LP001",
+          "nombre": "Préstamos personales",
+          "descripcion": "Préstamo para uso personal sin destino específico",
+          "limites": {
+            "montoMinimo": 0,
+            "montoMaximo": 6450000,
+            "maxCuotas": 48
+          },
+          "amortizacion": {
+            "sistema": "FRANCES",
+            "descripcion": "Cuota fija mensual"
+          },
+          "esConsumo": false,
+          "plazosDisponibles": null,
+          "costos": {
+            "otorgamiento": {
+              "gastosAdminPorcentaje": 1,
+              "gastosAdminMinimo": 90,
+              "selladoPorcentaje": 0.02,
+              "fondoQuebrantoPorcentaje": 0
+            },
+            "cuota": {
+              "seguroVidaPorcentaje": 0.06,
+              "seguroIncendioPorcentaje": 0,
+              "gastosAdminFijo": 0
+            }
+          },
+          "tasa": {
+            "tipo": "FIJA",
+            "tea": 18.5,
+            "fechaVigencia": "2026-02-01"
+          }
+        },
+        {
+          "id": 2,
+          "codigo": "LP002",
+          "nombre": "Préstamos de consumo",
+          "descripcion": "Préstamo para bienes de consumo con tasas por plazo",
+          "limites": {
+            "montoMinimo": 0,
+            "montoMaximo": 3000000,
+            "maxCuotas": 48
+          },
+          "amortizacion": {
+            "sistema": "FRANCES",
+            "descripcion": "Cuota fija mensual"
+          },
+          "esConsumo": true,
+          "plazosDisponibles": [6, 12, 24, 36, 48],
+          "costos": {
+            "otorgamiento": {
+              "gastosAdminPorcentaje": 1,
+              "gastosAdminMinimo": 90,
+              "selladoPorcentaje": 0.02,
+              "fondoQuebrantoPorcentaje": 0
+            },
+            "cuota": {
+              "seguroVidaPorcentaje": 0.06,
+              "seguroIncendioPorcentaje": 0,
+              "gastosAdminFijo": 0
+            }
+          },
+          "tasa": {
+            "tipo": "FIJA",
+            "tea": 16.5,
+            "nota": "La tasa varía según el plazo seleccionado. Use el simulador para ver la tasa exacta.",
+            "fechaVigencia": "2026-02-01"
+          }
+        },
+        {
+          "id": 3,
+          "codigo": "LP003",
+          "nombre": "Préstamos hipotecarios",
+          "descripcion": "Préstamo para adquisición o refacción de vivienda",
+          "limites": {
+            "montoMinimo": 100000,
+            "montoMaximo": 50000000,
+            "maxCuotas": 240
+          },
+          "amortizacion": {
+            "sistema": "ALEMAN",
+            "descripcion": "Capital fijo, cuota decreciente"
+          },
+          "esConsumo": false,
+          "plazosDisponibles": null,
+          "costos": {
+            "otorgamiento": {
+              "gastosAdminPorcentaje": 2,
+              "gastosAdminMinimo": 500,
+              "selladoPorcentaje": 0.05,
+              "fondoQuebrantoPorcentaje": 1
+            },
+            "cuota": {
+              "seguroVidaPorcentaje": 0.1,
+              "seguroIncendioPorcentaje": 0.15,
+              "gastosAdminFijo": 100
+            }
+          },
+          "tasa": {
+            "tipo": "VARIABLE",
+            "badlar": 14.5,
+            "factor": 3.5,
+            "tea": 18,
+            "nota": "Tasa variable. Se recalcula mensualmente en base a BADLAR.",
+            "fechaVigencia": "2026-02-01"
+          }
+        }
+      ],
+      "meta": {
+        "generadoEn": "2026-02-20T10:30:00Z",
+        "totalLineas": 3
+      }
+    }
+  },
+  "tasas": {
+    "success": true,
+    "data": {
+      "tasaPublica": {
+        "valor": 18.5,
+        "descripcion": "Tasa Efectiva Anual (TEA) de referencia para préstamos con tasa fija",
+        "fechaVigencia": "2026-02-01"
+      },
+      "tasaVariable": {
+        "badlar": 14.5,
+        "factor": 3.5,
+        "tea": 18,
+        "descripcion": "BADLAR + Factor aplicable para préstamos con tasa variable",
+        "fechaVigencia": "2026-02-01"
+      },
+      "ultimaActualizacion": "2026-02-01T00:00:00Z"
+    }
+  }
+}
