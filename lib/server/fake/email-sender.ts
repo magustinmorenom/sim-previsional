@@ -16,7 +16,7 @@ export async function sendOtpByEmail(payload: {
   if (!config) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(
-        `[FAKE OTP DEV MODE] SMTP no configurado. Código para ${payload.to}: ${payload.code}`
+        `[FAKE CODE DEV MODE] SMTP no configurado. Código para ${payload.to}: ${payload.code}`
       );
 
       return {
@@ -26,18 +26,18 @@ export async function sendOtpByEmail(payload: {
     }
 
     throw new Error(
-      "No se pudo enviar el OTP por correo: faltan variables SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM."
+      "No se pudo enviar el código de un solo uso por correo: faltan variables SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM."
     );
   }
 
   try {
-    // Valida conectividad SMTP antes de intentar el envío real del OTP.
+    // Valida conectividad SMTP antes de intentar el envío real del código de un solo uso.
     await verifySmtpConnection(config);
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       const message = error instanceof Error ? error.message : "Error SMTP no controlado";
       console.warn(
-        `[FAKE OTP DEV MODE] SMTP falló en validación previa (${message}). Se usa OTP local para ${payload.to}: ${payload.code}`
+        `[FAKE CODE DEV MODE] SMTP falló en validación previa (${message}). Se usa código local para ${payload.to}: ${payload.code}`
       );
 
       return {
@@ -82,7 +82,7 @@ export async function sendOtpByEmail(payload: {
     if (process.env.NODE_ENV !== "production") {
       const message = error instanceof Error ? error.message : "Error SMTP no controlado";
       console.warn(
-        `[FAKE OTP DEV MODE] SMTP falló (${message}). Se usa OTP local para ${payload.to}: ${payload.code}`
+        `[FAKE CODE DEV MODE] SMTP falló (${message}). Se usa código local para ${payload.to}: ${payload.code}`
       );
 
       return {

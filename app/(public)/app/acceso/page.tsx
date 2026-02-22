@@ -61,7 +61,7 @@ export default function AccesoPage() {
         const message =
           typeof payload === "object" && payload && "error" in payload
             ? String((payload as { error?: string }).error)
-            : "No fue posible enviar el código OTP.";
+            : "No fue posible enviar el código de un solo uso.";
 
         throw new Error(message);
       }
@@ -69,7 +69,7 @@ export default function AccesoPage() {
       setChallenge(payload as AuthChallengeResponse);
       setOtpCode("");
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "No fue posible enviar el código OTP.";
+      const message = cause instanceof Error ? cause.message : "No fue posible enviar el código de un solo uso.";
       setError(message);
     } finally {
       setLoading(false);
@@ -80,12 +80,12 @@ export default function AccesoPage() {
     event.preventDefault();
 
     if (!challenge) {
-      setError("Primero solicitá el código OTP.");
+      setError("Primero solicitá el código de un solo uso.");
       return;
     }
 
     if (!/^\d{6}$/.test(otpCode.trim())) {
-      setError("Ingresá un código OTP válido de 6 dígitos.");
+      setError("Ingresá un código de un solo uso válido de 6 dígitos.");
       return;
     }
 
@@ -110,7 +110,7 @@ export default function AccesoPage() {
         const message =
           payload && typeof payload === "object" && "error" in payload
             ? String((payload as { error?: string }).error)
-            : "No fue posible validar el código OTP.";
+            : "No fue posible validar el código de un solo uso.";
 
         throw new Error(message);
       }
@@ -118,7 +118,7 @@ export default function AccesoPage() {
       router.replace(nextPath);
       router.refresh();
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "No fue posible validar el código OTP.";
+      const message = cause instanceof Error ? cause.message : "No fue posible validar el código de un solo uso.";
       setError(message);
     } finally {
       setLoading(false);
@@ -129,10 +129,7 @@ export default function AccesoPage() {
     <section className="anx-grid anx-grid-narrow">
       <article className="anx-panel anx-auth-panel">
         <h1>Acceso de afiliado</h1>
-        <p>
-          Este módulo requiere autenticación temporal con OTP. Una vez validado el código,
-          te redirigimos al módulo solicitado.
-        </p>
+        <p>Ingresá tu correo y te enviamos un código de acceso</p>
 
         {!challenge ? (
           <form onSubmit={(event) => void requestCode(event)} className="anx-form-grid">
@@ -153,7 +150,7 @@ export default function AccesoPage() {
         ) : (
           <form onSubmit={(event) => void verifyCode(event)} className="anx-form-grid">
             <label>
-              Código OTP
+              Código de un solo uso
               <input
                 type="text"
                 inputMode="numeric"
@@ -180,7 +177,7 @@ export default function AccesoPage() {
             </button>
 
             {challenge.devMode && challenge.devOtpCode && (
-              <small className="anx-dev-note">Modo desarrollo: OTP {challenge.devOtpCode}</small>
+              <small className="anx-dev-note">Modo desarrollo: código de un solo uso {challenge.devOtpCode}</small>
             )}
           </form>
         )}

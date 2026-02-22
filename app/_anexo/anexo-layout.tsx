@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Breadcrumbs } from "@/app/_anexo/breadcrumbs";
 import { ContentTransition } from "@/app/_anexo/content-transition";
+import { NavigationLoadingOverlay } from "@/app/_anexo/navigation-loading-overlay";
 import { TopNav } from "@/app/_anexo/top-nav";
+import { WorkspaceWithChat } from "@/app/_anexo/workspace-with-chat";
 import { getNavigationModules } from "@/lib/config/module-access";
 import { getAuthSessionCookieName, parseAuthSessionCookieValue } from "@/lib/server/session";
 
@@ -18,7 +20,7 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
     <div className="anx-shell">
       <header className="anx-header">
         <div className="anx-brand">
-          <Link href="/app" className="anx-brand-link" aria-label="Plataforma de Servicios">
+          <Link href="/app" className="anx-brand-link" aria-label="Inicio">
             <Image
               src="/cps-logo.svg"
               alt="CPS"
@@ -27,18 +29,24 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
               priority
               className="anx-brand-logo"
             />
-            <span>Plataforma de Servicios</span>
           </Link>
         </div>
 
-        <div className="anx-session-pill" aria-live="polite">
-          {hasSession ? "Sesión activa" : "Sesión no iniciada"}
+        <div className="anx-header-nav">
+          <TopNav modules={modules} hasSession={hasSession} className="anx-topnav-inline" />
+          {hasSession && (
+            <div className="anx-session-pill" aria-live="polite">
+              Sesión activa
+            </div>
+          )}
         </div>
       </header>
 
-      <TopNav modules={modules} hasSession={hasSession} />
       <Breadcrumbs />
-      <ContentTransition>{children}</ContentTransition>
+      <WorkspaceWithChat>
+        <ContentTransition>{children}</ContentTransition>
+      </WorkspaceWithChat>
+      <NavigationLoadingOverlay />
     </div>
   );
 }

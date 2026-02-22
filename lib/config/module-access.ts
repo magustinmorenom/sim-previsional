@@ -31,7 +31,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Preguntas frecuentes organizadas por tema.",
     path: "/app/faq",
     visibility: "public",
-    enabled: true
+    enabled: false
   },
   {
     key: "repositorio-normativo",
@@ -39,7 +39,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Ley, reglamentos y resoluciones de consulta.",
     path: "/app/repositorio-normativo",
     visibility: "public",
-    enabled: true,
+    enabled: false,
     badge: "Normativo"
   },
   {
@@ -56,7 +56,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Asistente documental con búsqueda sobre normativa y procesos.",
     path: "/app/chatbot",
     visibility: "public",
-    enabled: true,
+    enabled: false,
     badge: "IA"
   },
   {
@@ -80,7 +80,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
   {
     key: "acceso",
     title: "Acceso",
-    description: "Ingreso OTP para secciones privadas.",
+    description: "Ingreso con código de un solo uso para secciones privadas.",
     path: "/app/acceso",
     visibility: "public",
     enabled: false

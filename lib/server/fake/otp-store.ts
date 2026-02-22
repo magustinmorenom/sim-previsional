@@ -89,7 +89,7 @@ export function verifyFakeOtpCode(payload: {
     return {
       ok: false,
       status: 401,
-      error: "El desafío OTP no es válido o ya expiró.",
+      error: "El desafío del código de un solo uso no es válido o ya expiró.",
       code: "FAKE_OTP_CHALLENGE_NOT_FOUND"
     };
   }
@@ -100,7 +100,7 @@ export function verifyFakeOtpCode(payload: {
     return {
       ok: false,
       status: 410,
-      error: "El código OTP expiró. Solicitá uno nuevo.",
+      error: "El código de un solo uso expiró. Solicitá uno nuevo.",
       code: "FAKE_OTP_EXPIRED"
     };
   }
@@ -111,7 +111,7 @@ export function verifyFakeOtpCode(payload: {
     return {
       ok: false,
       status: 429,
-      error: "Se alcanzó el máximo de intentos para este código OTP.",
+      error: "Se alcanzó el máximo de intentos para este código de un solo uso.",
       code: "FAKE_OTP_MAX_ATTEMPTS"
     };
   }
@@ -125,7 +125,7 @@ export function verifyFakeOtpCode(payload: {
       return {
         ok: false,
         status: 429,
-        error: "Se alcanzó el máximo de intentos para este código OTP.",
+        error: "Se alcanzó el máximo de intentos para este código de un solo uso.",
         code: "FAKE_OTP_MAX_ATTEMPTS"
       };
     }
@@ -135,7 +135,7 @@ export function verifyFakeOtpCode(payload: {
     return {
       ok: false,
       status: 401,
-      error: "Código OTP incorrecto.",
+      error: "Código de un solo uso incorrecto.",
       code: "FAKE_OTP_INVALID"
     };
   }

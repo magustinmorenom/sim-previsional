@@ -2,29 +2,16 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { ModuleIcon } from "@/app/_anexo/module-icons";
 import { getNavigationModules } from "@/lib/config/module-access";
-
-const DEFAULT_SESSION_COOKIE_NAME = "sp_session";
-
-function getSessionCookieName(): string {
-  return process.env.AUTH_SESSION_COOKIE_NAME?.trim() || DEFAULT_SESSION_COOKIE_NAME;
-}
+import { getAuthSessionCookieName, parseAuthSessionCookieValue } from "@/lib/server/session";
 
 export default async function AppHomePage() {
   const cookieStore = await cookies();
-  const hasSession = Boolean(cookieStore.get(getSessionCookieName())?.value);
+  const sessionCookieValue = cookieStore.get(getAuthSessionCookieName())?.value;
+  const hasSession = Boolean(parseAuthSessionCookieValue(sessionCookieValue));
   const modules = getNavigationModules().filter((module) => module.key !== "home");
 
   return (
     <section className="anx-grid">
-      <article className="anx-hero-card anx-panel">
-        <h1>App de servicios para afiliados</h1>
-        <div className="anx-hero-tags">
-          <span>Biblioteca</span>
-          <span>Procesos</span>
-          <span>Simuladores</span>
-        </div>
-      </article>
-
       <section className="anx-module-grid">
         {modules.map((module) => {
           const isPrivate = module.visibility === "private";
@@ -34,7 +21,7 @@ export default async function AppHomePage() {
           const simulatorClass = module.key.startsWith("simulador-") ? "anx-module-card-simulator" : "";
 
           return (
-            <Link key={module.key} href={href} className={`anx-module-card anx-panel ${simulatorClass}`.trim()}>
+            <Link key={module.key} href={href} prefetch className={`anx-module-card anx-panel ${simulatorClass}`.trim()}>
               <div className="anx-module-card-top">
                 <div className="anx-module-title-wrap">
                   <ModuleIcon moduleKey={module.key} className="anx-module-card-icon" />

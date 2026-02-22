@@ -27,7 +27,7 @@ function buildRemoteErrorResponse(error: RemoteApiError): NextResponse {
 
   return NextResponse.json(
     {
-      error: "No fue posible iniciar el desafío OTP.",
+      error: "No fue posible iniciar el desafío del código de un solo uso.",
       code: error.code,
       details: error.details
     },
@@ -69,7 +69,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const message = error instanceof Error ? error.message : "Error no controlado";
     return NextResponse.json(
       {
-        error: "No fue posible iniciar el desafío OTP.",
+        error: "No fue posible iniciar el desafío del código de un solo uso.",
         details: message
       },
       { status: 502 }

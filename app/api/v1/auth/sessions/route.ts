@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 
 const createSessionSchema = z.object({
   challengeId: z.string().trim().min(1),
-  code: z.string().regex(/^\d{6}$/, "El código OTP debe tener 6 dígitos")
+  code: z.string().regex(/^\d{6}$/, "El código de un solo uso debe tener 6 dígitos")
 });
 
 function errorResponse(
@@ -51,14 +51,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     const challengeState = getAuthChallengeFromRequest(request);
     if (!challengeState) {
       return errorResponse(401, {
-        error: "No existe un desafío OTP activo.",
+        error: "No existe un desafío de código de un solo uso activo.",
         code: "AUTH_CHALLENGE_REQUIRED"
       });
     }
 
     if (challengeState.challengeId !== parsed.data.challengeId) {
       return errorResponse(401, {
-        error: "El desafío OTP no coincide con la sesión activa.",
+        error: "El desafío de código de un solo uso no coincide con la sesión activa.",
         code: "AUTH_CHALLENGE_MISMATCH"
       });
     }
@@ -67,7 +67,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         410,
         {
-          error: "El código OTP expiró. Solicitá uno nuevo.",
+          error: "El código de un solo uso expiró. Solicitá uno nuevo.",
           code: "OTP_EXPIRED"
         },
         (response) => {
@@ -80,7 +80,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         429,
         {
-          error: "Se alcanzó el máximo de intentos para este código OTP.",
+          error: "Se alcanzó el máximo de intentos para este código de un solo uso.",
           code: "OTP_MAX_ATTEMPTS_REACHED"
         },
         (response) => {
@@ -123,7 +123,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         return errorResponse(
           502,
           {
-            error: "No fue posible validar el código OTP.",
+            error: "No fue posible validar el código de un solo uso.",
             code: error.code,
             details: error.details
           },
@@ -137,7 +137,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         502,
         {
-          error: "No fue posible validar el código OTP.",
+          error: "No fue posible validar el código de un solo uso.",
           code: "OTP_VALIDATION_FAILED",
           details: message
         },

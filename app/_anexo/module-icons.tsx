@@ -8,6 +8,7 @@ export type ModuleIconKey =
   | "repositorio-normativo"
   | "normativa"
   | "consultas"
+  | "chatbot-cps"
   | "simulador-previsional"
   | "simulador-prestamos";
 
@@ -61,6 +62,15 @@ function iconFor(moduleKey: string): JSX.Element {
           <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v9A2.5 2.5 0 0 1 16.5 18H10l-4 3v-3H7.5A2.5 2.5 0 0 1 5 15.5v-9Z" />
           <path d="M9 9h6" />
           <path d="M9 12h4" />
+        </svg>
+      );
+    case "chatbot-cps":
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 3 10 7.5 5.5 9.5 10 11.5 12 16l2-4.5 4.5-2-4.5-2L12 3Z" />
+          <path d="M4.5 15.5 5.3 17.2 7 18l-1.7.8-.8 1.7-.8-1.7L2 18l1.7-.8.8-1.7Z" />
+          <path d="M12 16v5" />
+          <path d="M9.5 21h5" />
         </svg>
       );
     case "simulador-previsional":

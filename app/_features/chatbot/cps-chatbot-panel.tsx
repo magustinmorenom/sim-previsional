@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
 
@@ -11,18 +11,18 @@ type ChatMessage = {
   persist: boolean;
 };
 
+interface CpsChatbotPanelProps {
+  className?: string;
+}
+
 const INITIAL_MESSAGE: ChatMessage = {
   id: "assistant-welcome",
   role: "assistant",
-  content: "Hola, soy CPS Bot. Preguntame sobre normativa, procesos o documentos disponibles.",
+  content: "Hola, soy IA CPS. Te ayudo con procesos, documentación y consultas frecuentes.",
   persist: false
 };
 
-const SUGGESTED_PROMPTS = [
-  "¿Qué documentación necesito para iniciar mi trámite previsional?",
-  "¿Dónde puedo consultar la normativa vigente?",
-  "¿Qué canales de contacto tiene la plataforma?"
-] as const;
+const CHAT_STATE_STORAGE_KEY = "anx-cps-chat-state-v1";
 
 function buildMessage(role: ChatRole, content: string, persist = true): ChatMessage {
   return {
@@ -44,22 +44,82 @@ function getErrorMessage(payload: unknown): string {
   return "No fue posible obtener respuesta del asistente.";
 }
 
-export function CpsChatbotPanel() {
+export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const firstRenderRef = useRef(true);
 
-  useEffect(() => {
+  function scrollToBottom(behavior: ScrollBehavior): void {
     if (!viewportRef.current) {
       return;
     }
 
     viewportRef.current.scrollTo({
       top: viewportRef.current.scrollHeight,
-      behavior: "smooth"
+      behavior
     });
+  }
+
+  const persistableMessages = useMemo(
+    () => messages.filter((item) => item.persist).map((item) => ({ role: item.role, content: item.content })),
+    [messages]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const rawState = window.localStorage.getItem(CHAT_STATE_STORAGE_KEY);
+    if (!rawState) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(rawState) as ReadonlyArray<{ role: ChatRole; content: string }>;
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return;
+      }
+
+      const restoredMessages = parsed
+        .filter((item) => (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+        .map((item) => buildMessage(item.role, item.content, true));
+
+      if (restoredMessages.length > 0) {
+        setMessages([INITIAL_MESSAGE, ...restoredMessages]);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (persistableMessages.length === 0) {
+      window.localStorage.removeItem(CHAT_STATE_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(CHAT_STATE_STORAGE_KEY, JSON.stringify(persistableMessages.slice(-24)));
+  }, [persistableMessages]);
+
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      scrollToBottom("auto");
+      return;
+    }
+
+    if (shouldStickToBottomRef.current) {
+      scrollToBottom("smooth");
+    }
   }, [messages, loading]);
 
   async function sendMessage(rawContent: string): Promise<void> {
@@ -69,14 +129,11 @@ export function CpsChatbotPanel() {
     }
 
     const userMessage = buildMessage("user", content);
-    const requestHistory = messages
-      .filter((item) => item.persist)
+    const requestHistory = persistableMessages
       .slice(-12)
-      .map((item) => ({
-        role: item.role,
-        content: item.content
-      }));
+      .map((item) => ({ role: item.role, content: item.content }));
 
+    shouldStickToBottomRef.current = true;
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setError(null);
@@ -127,33 +184,33 @@ export function CpsChatbotPanel() {
     void sendMessage(input);
   }
 
+  function handleViewportScroll(event: React.UIEvent<HTMLDivElement>): void {
+    const element = event.currentTarget;
+    const threshold = 44;
+    const distanceToBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    shouldStickToBottomRef.current = distanceToBottom <= threshold;
+  }
+
+  const shellClassName = className ? `anx-chat-shell ${className}` : "anx-chat-shell";
+
   return (
-    <article className="anx-panel anx-chat-shell">
+    <article className={shellClassName}>
       <header className="anx-chat-head">
         <div>
-          <h2>CPS Bot</h2>
-          <p>Respuestas basadas en documentos indexados.</p>
+          <h2>
+            <span className="anx-chat-title-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3 10 7.5 5.5 9.5 10 11.5 12 16l2-4.5 4.5-2-4.5-2L12 3Z" />
+                <path d="M4.5 15.5 5.3 17.2 7 18l-1.7.8-.8 1.7-.8-1.7L2 18l1.7-.8.8-1.7Z" />
+              </svg>
+            </span>
+            IA CPS
+          </h2>
+          <p>Pregúntale a nuestro agente IA cualquier duda que tengas</p>
         </div>
-        <span className="anx-chat-pill">Base documental</span>
       </header>
 
-      <div className="anx-chat-prompts">
-        {SUGGESTED_PROMPTS.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            className="anx-chat-prompt"
-            onClick={() => {
-              void sendMessage(prompt);
-            }}
-            disabled={loading}
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
-
-      <div className="anx-chat-window" ref={viewportRef} aria-live="polite">
+      <div className="anx-chat-window" ref={viewportRef} aria-live="polite" onScroll={handleViewportScroll}>
         {messages.map((message, index) => (
           <article
             key={message.id}
@@ -161,15 +218,15 @@ export function CpsChatbotPanel() {
             style={{ animationDelay: `${Math.min(index * 45, 260)}ms` }}
           >
             <small className="anx-chat-bubble-role">
-              {message.role === "assistant" ? "CPS Bot" : "Vos"}
+              {message.role === "assistant" ? "IA CPS" : "Vos"}
             </small>
             <p className="anx-chat-bubble-text">{message.content}</p>
           </article>
         ))}
 
         {loading && (
-          <div className="anx-chat-typing" aria-label="CPS Bot está escribiendo">
-            <small>CPS Bot está escribiendo</small>
+          <div className="anx-chat-typing" aria-label="IA CPS está escribiendo">
+            <small>IA CPS está escribiendo</small>
             <div className="anx-chat-dots">
               <span />
               <span />
@@ -182,7 +239,7 @@ export function CpsChatbotPanel() {
       {error && <p className="anx-status anx-status-error">{error}</p>}
 
       <form className="anx-chat-form" onSubmit={handleSubmit}>
-        <label className="sr-only" htmlFor="cps-chat-input">Mensaje para CPS Bot</label>
+        <label className="sr-only" htmlFor="cps-chat-input">Mensaje para IA CPS</label>
         <input
           id="cps-chat-input"
           className="anx-chat-input"

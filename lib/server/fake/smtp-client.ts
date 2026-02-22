@@ -7,6 +7,7 @@ export interface SmtpConfig {
   user: string;
   pass: string;
   from: string;
+  timeoutMs: number;
 }
 
 interface ReadSmtpConfigOptions {
@@ -49,6 +50,19 @@ function parsePort(rawValue: string | undefined): number {
   return Math.floor(parsed);
 }
 
+function parseTimeout(rawValue: string | undefined): number {
+  if (!rawValue) {
+    return process.env.NODE_ENV === "production" ? 10_000 : 2_500;
+  }
+
+  const parsed = Number(rawValue.trim());
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return process.env.NODE_ENV === "production" ? 10_000 : 2_500;
+  }
+
+  return Math.floor(parsed);
+}
+
 export function readSmtpConfig(options?: ReadSmtpConfigOptions): SmtpConfig | null {
   const host =
     process.env.SMTP_HOST?.trim() ||
@@ -58,6 +72,7 @@ export function readSmtpConfig(options?: ReadSmtpConfigOptions): SmtpConfig | nu
   const pass = process.env.SMTP_PASS?.trim();
   const from = readFromAddress();
   const port = parsePort(process.env.SMTP_PORT?.trim() || process.env.SMTP_PORT_ALT?.trim());
+  const timeoutMs = parseTimeout(process.env.SMTP_TIMEOUT_MS?.trim());
   const secureRaw = process.env.SMTP_SECURE?.trim();
   const secure = secureRaw ? secureRaw === "true" : port === 465;
 
@@ -80,7 +95,8 @@ export function readSmtpConfig(options?: ReadSmtpConfigOptions): SmtpConfig | nu
     secure,
     user,
     pass,
-    from
+    from,
+    timeoutMs
   };
 }
 
@@ -89,6 +105,9 @@ export function createSmtpTransport(config: SmtpConfig): Transporter {
     host: config.host,
     port: config.port,
     secure: config.secure,
+    connectionTimeout: config.timeoutMs,
+    greetingTimeout: config.timeoutMs,
+    socketTimeout: config.timeoutMs,
     auth: {
       user: config.user,
       pass: config.pass

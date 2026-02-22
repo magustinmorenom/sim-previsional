@@ -225,7 +225,7 @@ export default function HomePage() {
       setChallenge(nextChallenge);
       setOtpCode("");
     } catch {
-      setAuthError("No fue posible iniciar el desafío OTP.");
+      setAuthError("No fue posible iniciar el desafío del código de un solo uso.");
     } finally {
       setAuthLoading(false);
     }
@@ -240,7 +240,7 @@ export default function HomePage() {
     }
 
     if (!/^\d{6}$/.test(otpCode.trim())) {
-      setAuthError("Ingresá un código OTP de 6 dígitos.");
+      setAuthError("Ingresá un código de un solo uso de 6 dígitos.");
       return;
     }
 
@@ -262,7 +262,7 @@ export default function HomePage() {
       const payload = await safeReadJson(response);
 
       if (!response.ok) {
-        setAuthError(readErrorMessage(payload, "No fue posible validar el código OTP."));
+        setAuthError(readErrorMessage(payload, "No fue posible validar el código de un solo uso."));
         return;
       }
 
@@ -270,7 +270,7 @@ export default function HomePage() {
       setOtpCode("");
       await restoreSession();
     } catch {
-      setAuthError("No fue posible validar el código OTP.");
+      setAuthError("No fue posible validar el código de un solo uso.");
     } finally {
       setAuthLoading(false);
     }
@@ -296,7 +296,7 @@ export default function HomePage() {
       const payload = await safeReadJson(response);
 
       if (!response.ok) {
-        setAuthError(readErrorMessage(payload, "No fue posible reenviar el código OTP."));
+        setAuthError(readErrorMessage(payload, "No fue posible reenviar el código de un solo uso."));
         return;
       }
 
@@ -304,7 +304,7 @@ export default function HomePage() {
       setChallenge(nextChallenge);
       setOtpCode("");
     } catch {
-      setAuthError("No fue posible reenviar el código OTP.");
+      setAuthError("No fue posible reenviar el código de un solo uso.");
     } finally {
       setAuthLoading(false);
     }
@@ -441,7 +441,7 @@ export default function HomePage() {
             {!challenge ? (
               <article className="af-card af-auth-card">
                 <h2>Ingreso de afiliado</h2>
-                <p>Ingresá tu correo electrónico para recibir un código de verificación.</p>
+                <p>Ingresá tu correo y te enviamos un código de acceso</p>
 
                 <form className="af-form" onSubmit={(event) => void handleChallengeRequest(event)}>
                   <label className="af-field">
@@ -469,7 +469,7 @@ export default function HomePage() {
               </article>
             ) : (
               <article className="af-card af-auth-card">
-                <h2>Verificación OTP</h2>
+                <h2>Verificación de código de un solo uso</h2>
                 <p>
                   Ingresá el código enviado a <strong>{credentials.email}</strong>. El código vence en 10 minutos.
                 </p>
@@ -494,7 +494,7 @@ export default function HomePage() {
 
                 {challenge.devMode && challenge.devOtpCode && (
                   <div className="af-inline-note">
-                    Modo desarrollo activo (sin SMTP): código OTP {challenge.devOtpCode}
+                    Modo desarrollo activo (sin SMTP): código de un solo uso {challenge.devOtpCode}
                   </div>
                 )}
 

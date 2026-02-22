@@ -8,6 +8,7 @@ import type { ModuleDescriptor } from "@/lib/types/content";
 interface TopNavProps {
   modules: ModuleDescriptor[];
   hasSession: boolean;
+  className?: string;
 }
 
 function normalizePath(path: string): string {
@@ -17,6 +18,10 @@ function normalizePath(path: string): string {
 function isActivePath(pathname: string, target: string): boolean {
   const normalizedPathname = normalizePath(pathname);
   const normalizedTarget = normalizePath(target);
+
+  if (normalizedTarget === "/app") {
+    return normalizedPathname === "/app";
+  }
 
   if (normalizedPathname === normalizedTarget) {
     return true;
@@ -29,11 +34,12 @@ function isSimulatorModule(module: ModuleDescriptor): boolean {
   return module.key === "simulador-previsional" || module.key === "simulador-prestamos";
 }
 
-export function TopNav({ modules, hasSession }: TopNavProps) {
+export function TopNav({ modules, hasSession, className }: TopNavProps) {
   const pathname = usePathname();
+  const navClassName = className ? `anx-topnav ${className}` : "anx-topnav";
 
   return (
-    <nav className="anx-topnav" aria-label="Navegación principal">
+    <nav className={navClassName} aria-label="Navegación principal">
       <div className="anx-topnav-scroll">
         {modules.map((module) => {
           const active = isActivePath(pathname, module.path);
