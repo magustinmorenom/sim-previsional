@@ -162,6 +162,9 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
     }
 
     requestAnimationFrame(() => {
+      if (hasSelectionInsideChat(viewportRef.current)) {
+        return;
+      }
       focusInput();
     });
   }
@@ -241,6 +244,31 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
   );
 }
 
+function hasSelectionInsideChat(container: HTMLDivElement | null): boolean {
+  if (!container || typeof window === "undefined") {
+    return false;
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false;
+  }
+
+  const isInside = (node: Node | null): boolean => {
+    if (!node) {
+      return false;
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return Boolean(node.parentElement && container.contains(node.parentElement));
+    }
+
+    return container.contains(node);
+  };
+
+  return isInside(selection.anchorNode) || isInside(selection.focusNode);
+}
+
 type MarkdownBlock =
   | { type: "paragraph"; lines: string[] }
   | { type: "unordered-list"; items: string[] }
@@ -281,7 +309,6 @@ function renderMarkdown(content: string): ReactNode {
 function parseMarkdownBlocks(content: string): MarkdownBlock[] {
   const lines = content.replace(/\r\n?/g, "\n").split("\n");
   const blocks: MarkdownBlock[] = [];
-
   let paragraphLines: string[] = [];
   let listType: "unordered-list" | "ordered-list" | null = null;
   let listItems: string[] = [];

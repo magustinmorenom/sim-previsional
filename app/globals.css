@@ -2052,7 +2052,7 @@ textarea {
 .anx-chat-markdown code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.9em;
-  background: rgba(16, 39, 62, 0.1);
+  background: rgba(16, 39, 62, 0.12);
   border-radius: 6px;
   padding: 0.1em 0.35em;
 }
@@ -3074,6 +3074,9 @@ button {
   min-height: 0;
   max-height: 100%;
   height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   border: none;
   background: transparent;
   backdrop-filter: none;
@@ -3105,6 +3108,8 @@ button {
 }
 
 .anx-chat-bubble {
+  width: fit-content;
+  max-width: min(92%, 680px);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.14);
@@ -3117,6 +3122,18 @@ button {
 .anx-chat-bubble-role,
 .anx-chat-bubble-text {
   color: #ffffff;
+}
+
+.anx-chat-bubble-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.anx-chat-bubble-text * {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .anx-chat-shell-embedded .anx-chat-markdown code {
