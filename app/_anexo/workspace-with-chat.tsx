@@ -13,19 +13,19 @@ interface WorkspaceWithChatProps {
 
 function readSavedOpenState(): boolean {
   if (typeof window === "undefined") {
-    return true;
+    return false;
   }
 
   const savedValue = window.localStorage.getItem(CHAT_OPEN_STORAGE_KEY);
   if (savedValue === null) {
-    return true;
+    return false;
   }
 
   return savedValue === "1";
 }
 
 export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState<boolean>(readSavedOpenState);
   const [isMobile, setIsMobile] = useState(false);
   const [chatOpenHeight, setChatOpenHeight] = useState<number | null>(null);
   const chatDockRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +88,7 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
 
   const workspaceStyle = useMemo(() => {
     const style = {
-      "--anx-chat-width": chatOpen ? "35%" : "72px"
+      "--anx-chat-width": chatOpen ? "30%" : "72px"
     } as Record<string, string>;
 
     if (chatOpenHeight) {
@@ -97,6 +97,16 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
 
     return style as CSSProperties;
   }, [chatOpen, chatOpenHeight]);
+
+  const toggleChat = () => {
+    setChatOpen((current) => {
+      const next = !current;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, next ? "1" : "0");
+      }
+      return next;
+    });
+  };
 
   return (
     <div
@@ -112,7 +122,7 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
             className="anx-chat-toggle"
             aria-expanded={chatOpen}
             aria-label={chatOpen ? "Ocultar asistente IA" : "Mostrar asistente IA"}
-            onClick={() => setChatOpen((current) => !current)}
+            onClick={toggleChat}
           >
             <span className="anx-chat-toggle-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">

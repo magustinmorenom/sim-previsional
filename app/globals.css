@@ -25,6 +25,8 @@
   --simulator-accent: #a12d52;
   --simulator-accent-strong: #8a2648;
   --simulator-accent-soft: #f8e9ef;
+  --anx-fade-duration: 500ms;
+  --anx-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -194,6 +196,11 @@ textarea {
   gap: 10px;
 }
 
+.af-editable-age-row-compact {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  align-items: start;
+}
+
 .af-editable-group {
   gap: 6px;
 }
@@ -302,6 +309,18 @@ textarea {
   flex-wrap: nowrap;
 }
 
+.af-age-inline-picker-compact {
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+.af-age-option-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
 .af-quick-button {
   border: 1px solid #c7d5e8;
   border-radius: 10px;
@@ -318,6 +337,14 @@ textarea {
   min-width: 44px;
   padding: 0 10px;
   flex: 0 0 auto;
+}
+
+.af-age-inline-picker-compact .af-quick-button-age {
+  min-width: 0;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 
 .af-quick-button:hover {
@@ -546,9 +573,9 @@ textarea {
 }
 
 .af-family-compact-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 7px 9px;
   border-bottom: 1px solid #edf2f8;
@@ -563,6 +590,10 @@ textarea {
   font-size: 12px;
   color: #1f3c62;
   font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .af-family-compact-item small {
@@ -571,6 +602,12 @@ textarea {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.af-family-compact-item .af-family-compact-date {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
 }
 
 .af-control-panel {
@@ -655,6 +692,14 @@ textarea {
 
 .af-select-input-dark select:focus {
   outline: none;
+}
+
+.af-editable-end-age-field .af-currency-input {
+  max-width: 140px;
+}
+
+.af-editable-end-age-field .af-select-input-dark select {
+  font-size: 12px;
 }
 
 .af-currency-input-dark span {
@@ -1110,6 +1155,15 @@ textarea {
   .af-person-grid,
   .af-editable-age-row {
     grid-template-columns: 1fr;
+  }
+
+  .af-editable-end-age-field .af-currency-input {
+    max-width: 100%;
+  }
+
+  .af-age-inline-picker-compact .af-quick-button-age {
+    min-height: 28px;
+    font-size: 11px;
   }
 
   .af-whatif-chart {
@@ -2192,7 +2246,14 @@ textarea {
 }
 
 .anx-content-transition {
-  animation: anx-fade-in 0.34s ease both;
+  animation: anx-fade-in var(--anx-fade-duration) var(--anx-fade-ease) both;
+  will-change: opacity, transform;
+}
+
+.anx-panel,
+.af-card {
+  animation: anx-fade-in-soft var(--anx-fade-duration) var(--anx-fade-ease) both;
+  will-change: opacity, transform;
 }
 
 .anx-panel {
@@ -2441,7 +2502,19 @@ button {
 @keyframes anx-fade-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes anx-fade-in-soft {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
   }
 
   to {
@@ -2451,7 +2524,9 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .anx-content-transition {
+  .anx-content-transition,
+  .anx-panel,
+  .af-card {
     animation: none;
   }
 
@@ -2504,11 +2579,12 @@ button {
 
 /* Chat split workspace */
 .anx-workspace-with-chat {
-  --anx-chat-width: 35%;
+  --anx-chat-width: 30%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(72px, var(--anx-chat-width));
+  grid-template-columns: minmax(0, 1fr) minmax(72px, min(var(--anx-chat-width), 520px));
   gap: 16px;
   align-items: start;
+  overflow: hidden;
   transition: grid-template-columns 0.26s ease;
 }
 
@@ -2968,6 +3044,27 @@ button {
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 45, 82, 0.88) rgba(255, 255, 255, 0.14);
+}
+
+.anx-chat-window::-webkit-scrollbar {
+  width: 10px;
+}
+
+.anx-chat-window::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.anx-chat-window::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(161, 45, 82, 0.95) 0%, rgba(31, 77, 130, 0.95) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.anx-chat-window::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(177, 57, 95, 0.98) 0%, rgba(44, 97, 155, 0.98) 100%);
 }
 
 .anx-chat-bubble {

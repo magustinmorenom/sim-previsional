@@ -56,8 +56,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Generación de BEP para aportes a través de Comunidad Vinculada - Personería Jurídica.",
     path: "/app/tramites",
     visibility: "private",
-    enabled: true,
-    badge: "Privado"
+    enabled: true
   },
   {
     key: "chatbot-cps",
@@ -74,8 +73,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Proyección previsional personalizada del afiliado.",
     path: "/app/simuladores/previsional",
     visibility: "private",
-    enabled: true,
-    badge: "Privado"
+    enabled: true
   },
   {
     key: "simulador-prestamos",
@@ -83,8 +81,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Subapp de préstamos reservada para la próxima etapa.",
     path: "/app/simuladores/prestamos",
     visibility: "private",
-    enabled: true,
-    badge: "Privado"
+    enabled: true
   },
   {
     key: "acceso",

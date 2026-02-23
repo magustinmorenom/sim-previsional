@@ -27,7 +27,9 @@ export default async function AppHomePage() {
                   <ModuleIcon moduleKey={module.key} className="anx-module-card-icon" />
                   <h2>{module.title}</h2>
                 </div>
-                {module.badge && <span className="anx-badge">{module.badge}</span>}
+                {module.badge && module.badge.toLowerCase() !== "privado" && (
+                  <span className="anx-badge">{module.badge}</span>
+                )}
               </div>
               <p>{module.description}</p>
               <span className="anx-module-cta">Abrir módulo</span>

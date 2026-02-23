@@ -623,6 +623,9 @@ export default function HomePage() {
                       {context.beneficiaries.map((beneficiary, index) => (
                         <div key={`${beneficiary.type}-${beneficiary.fullName}-${index}`} className="af-family-compact-item">
                           <span>{beneficiary.fullName}</span>
+                          <small className="af-family-compact-date">
+                            {formatIsoToDisplay(beneficiary.birthDate)}
+                          </small>
                           <small>{formatBeneficiaryType(beneficiary.type)}</small>
                         </div>
                       ))}
@@ -675,12 +678,15 @@ export default function HomePage() {
                         )}
                       </label>
 
-                      <div className="af-editable-age-row">
-                        <label className="af-field af-editable-group">
+                      <div className="af-editable-age-row af-editable-age-row-compact">
+                        <label className="af-field af-editable-group af-editable-retirement-age-field">
                           <span className="af-editable-label">Edad de jubilación</span>
-                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad de jubilación">
-                            <span className="af-age-current">{formatAgePickerValue(formState.retirementAge)}</span>
-                            <div className="af-age-option-track">
+                          <div
+                            className="af-age-inline-picker af-age-inline-picker-compact"
+                            role="group"
+                            aria-label="Selector de edad de jubilación"
+                          >
+                            <div className="af-age-option-track af-age-option-grid">
                               {EDITABLE_AGE_OPTIONS.map((age) => (
                                 <button
                                   type="button"
@@ -698,7 +704,7 @@ export default function HomePage() {
                           )}
                         </label>
 
-                        <label className="af-field af-editable-group">
+                        <label className="af-field af-editable-group af-editable-end-age-field">
                           <span className="af-editable-label">Edad fin aportes</span>
                           <div className="af-currency-input af-currency-input-dark af-select-input-dark">
                             <select
@@ -1074,15 +1080,6 @@ function formatKLabel(value: number): string {
   }
 
   return `${formatNumber(value / 1000)}k`;
-}
-
-function formatAgePickerValue(rawValue: string): string {
-  const parsed = toFiniteNumber(rawValue);
-  if (!Number.isFinite(parsed)) {
-    return "--";
-  }
-
-  return String(Math.max(0, Math.trunc(parsed)));
 }
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;

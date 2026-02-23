@@ -18,7 +18,6 @@ export default function SimuladoresIndexPage() {
               <ModuleIcon moduleKey="simulador-previsional" className="anx-module-card-icon" />
               <h2>Simulación previsional</h2>
             </div>
-            <span className="anx-badge">Privado</span>
           </div>
           <span className="anx-module-cta">Entrar</span>
         </Link>
@@ -32,7 +31,6 @@ export default function SimuladoresIndexPage() {
               <ModuleIcon moduleKey="simulador-prestamos" className="anx-module-card-icon" />
               <h2>Simulación de préstamos</h2>
             </div>
-            <span className="anx-badge">Privado</span>
           </div>
           <span className="anx-module-cta">Entrar</span>
         </Link>

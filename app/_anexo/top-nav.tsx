@@ -58,7 +58,7 @@ export function TopNav({ modules, hasSession, className }: TopNavProps) {
             >
               <ModuleIcon moduleKey={module.key} className="anx-topnav-link-icon" />
               <span className="anx-topnav-link-label">{module.title}</span>
-              {isPrivate && <small>{hasSession ? "Privado" : "Login"}</small>}
+              {isPrivate && !hasSession && <small>Login</small>}
             </Link>
           );
         })}
