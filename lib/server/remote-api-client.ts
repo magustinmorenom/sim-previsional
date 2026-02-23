@@ -5,7 +5,14 @@ import type {
 } from "@/lib/types/auth";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_FAKE_API_BASE_URL = "http://127.0.0.1:3000/api/fake/v1/";
+
+function getDefaultFakeApiBaseUrl(): string {
+  const rawPort = process.env.PORT?.trim();
+  const parsedPort = Number(rawPort);
+  const port = Number.isFinite(parsedPort) && parsedPort > 0 ? Math.floor(parsedPort) : 3000;
+
+  return `http://127.0.0.1:${port}/api/fake/v1/`;
+}
 
 interface RemoteRequestOptions {
   method: "GET" | "POST";
@@ -39,7 +46,7 @@ function getTimeoutMs(): number {
 
 function getBaseUrl(): string {
   const value = process.env.REMOTE_API_BASE_URL?.trim();
-  return value || DEFAULT_FAKE_API_BASE_URL;
+  return value || getDefaultFakeApiBaseUrl();
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -96,7 +103,7 @@ function normalizeChallengeResponse(payload: unknown): AuthChallengeResponse {
     throw new RemoteApiError(
       502,
       "REMOTE_INVALID_RESPONSE",
-      "La API remota respondió un formato inválido para el desafío OTP."
+      "La API remota respondió un formato inválido para el desafío del código de un solo uso."
     );
   }
 

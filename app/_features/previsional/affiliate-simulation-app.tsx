@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import {
   buildSimulationInputFromContext,
   validateEditableSimulationValues,
@@ -20,6 +19,7 @@ const WHAT_IF_SCENARIOS = 8;
 const WHAT_IF_TICKS = 5;
 const EDITABLE_AGE_OPTIONS = [65, 66, 67, 68, 69, 70] as const;
 const VOLUNTARY_CONTRIBUTION_STEPS = [50000, 100000, 200000, 400000, 800000] as const;
+const VOLUNTARY_END_AGE_DEFAULT = 65;
 
 type EditableFormState = {
   voluntaryMonthlyAmount: string;
@@ -127,6 +127,22 @@ export default function HomePage() {
     return Array.from({ length: WHAT_IF_TICKS }, (_, index) => maxWhatIfBenefit - index * step);
   }, [maxWhatIfBenefit]);
 
+  const voluntaryEndAgeLimits = useMemo(() => {
+    const selectedRetirementAge = toFiniteNumber(formState?.retirementAge ?? "");
+    const fallbackRetirementAge = EDITABLE_AGE_OPTIONS[0];
+    const retirementAge = Number.isFinite(selectedRetirementAge)
+      ? Math.max(fallbackRetirementAge, Math.trunc(selectedRetirementAge))
+      : fallbackRetirementAge;
+    const currentAge = titularAge ?? context?.voluntaryContribution.startAge ?? 0;
+
+    return buildVoluntaryEndAgeLimits(retirementAge, currentAge);
+  }, [context?.voluntaryContribution.startAge, formState?.retirementAge, titularAge]);
+
+  const voluntaryEndAgeOptions = useMemo(() => {
+    const count = Math.max(0, voluntaryEndAgeLimits.max - voluntaryEndAgeLimits.min) + 1;
+    return Array.from({ length: count }, (_, index) => voluntaryEndAgeLimits.min + index);
+  }, [voluntaryEndAgeLimits.max, voluntaryEndAgeLimits.min]);
+
   async function restoreSession(): Promise<void> {
     setSessionLoading(true);
 
@@ -181,12 +197,7 @@ export default function HomePage() {
       setFormState({
         voluntaryMonthlyAmount: "0",
         retirementAge: String(nextContext.mandatoryContribution.endAgeDefault),
-        voluntaryEndAge: String(
-          Math.min(
-            nextContext.voluntaryContribution.endAgeDefault,
-            nextContext.mandatoryContribution.endAgeDefault
-          )
-        )
+        voluntaryEndAge: String(VOLUNTARY_END_AGE_DEFAULT)
       });
       setResult(null);
       setError(null);
@@ -226,7 +237,7 @@ export default function HomePage() {
       setChallenge(nextChallenge);
       setOtpCode("");
     } catch {
-      setAuthError("No fue posible iniciar el desafío OTP.");
+      setAuthError("No fue posible iniciar el desafío del código de un solo uso.");
     } finally {
       setAuthLoading(false);
     }
@@ -241,7 +252,7 @@ export default function HomePage() {
     }
 
     if (!/^\d{6}$/.test(otpCode.trim())) {
-      setAuthError("Ingresá un código OTP de 6 dígitos.");
+      setAuthError("Ingresá un código de un solo uso de 6 dígitos.");
       return;
     }
 
@@ -263,7 +274,7 @@ export default function HomePage() {
       const payload = await safeReadJson(response);
 
       if (!response.ok) {
-        setAuthError(readErrorMessage(payload, "No fue posible validar el código OTP."));
+        setAuthError(readErrorMessage(payload, "No fue posible validar el código de un solo uso."));
         return;
       }
 
@@ -271,7 +282,7 @@ export default function HomePage() {
       setOtpCode("");
       await restoreSession();
     } catch {
-      setAuthError("No fue posible validar el código OTP.");
+      setAuthError("No fue posible validar el código de un solo uso.");
     } finally {
       setAuthLoading(false);
     }
@@ -297,7 +308,7 @@ export default function HomePage() {
       const payload = await safeReadJson(response);
 
       if (!response.ok) {
-        setAuthError(readErrorMessage(payload, "No fue posible reenviar el código OTP."));
+        setAuthError(readErrorMessage(payload, "No fue posible reenviar el código de un solo uso."));
         return;
       }
 
@@ -305,24 +316,8 @@ export default function HomePage() {
       setChallenge(nextChallenge);
       setOtpCode("");
     } catch {
-      setAuthError("No fue posible reenviar el código OTP.");
+      setAuthError("No fue posible reenviar el código de un solo uso.");
     } finally {
-      setAuthLoading(false);
-    }
-  }
-
-  async function handleLogout(): Promise<void> {
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      await fetch("/api/v1/auth/sessions", {
-        method: "DELETE"
-      });
-    } finally {
-      setSession(null);
-      setChallenge(null);
-      setOtpCode("");
       setAuthLoading(false);
     }
   }
@@ -356,7 +351,31 @@ export default function HomePage() {
     });
   }
 
-  function setAgeFromQuickPicker(name: "retirementAge" | "voluntaryEndAge", age: number): void {
+  function setRetirementAgeFromQuickPicker(age: number): void {
+    setFormState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const parsedVoluntaryEndAge = toFiniteNumber(current.voluntaryEndAge);
+      const currentAge = titularAge ?? context?.voluntaryContribution.startAge ?? 0;
+      const limits = buildVoluntaryEndAgeLimits(age, currentAge);
+      const nextVoluntaryEndAge = clampInteger(
+        parsedVoluntaryEndAge,
+        limits.min,
+        limits.max,
+        Math.min(Math.max(VOLUNTARY_END_AGE_DEFAULT, limits.min), limits.max)
+      );
+
+      return {
+        ...current,
+        retirementAge: String(age),
+        voluntaryEndAge: String(nextVoluntaryEndAge)
+      };
+    });
+  }
+
+  function updateVoluntaryEndAgeSelection(rawValue: string): void {
     setFormState((current) => {
       if (!current) {
         return current;
@@ -364,7 +383,7 @@ export default function HomePage() {
 
       return {
         ...current,
-        [name]: String(age)
+        voluntaryEndAge: rawValue
       };
     });
   }
@@ -422,23 +441,12 @@ export default function HomePage() {
   }
 
   return (
-    <main className="af-shell">
-      <section className="af-surface">
+    <section className="anx-panel af-app-shell">
         <header className="af-header">
           <div>
             <h1>Simulador Previsional</h1>
-            <p>
-              Versión afiliado final con autenticación OTP, datos automáticos y simulación en una única pantalla.
-            </p>
+            <p>Acceso y simulación en una sola vista.</p>
           </div>
-          <Image
-            src="/cps-logo.svg"
-            alt="CPS PCEER"
-            className="af-logo"
-            width={130}
-            height={130}
-            priority
-          />
         </header>
 
         {sessionLoading && (
@@ -453,7 +461,7 @@ export default function HomePage() {
             {!challenge ? (
               <article className="af-card af-auth-card">
                 <h2>Ingreso de afiliado</h2>
-                <p>Ingresá tu correo electrónico para recibir un código de verificación.</p>
+                <p>Ingresá tu correo y te enviamos un código de acceso</p>
 
                 <form className="af-form" onSubmit={(event) => void handleChallengeRequest(event)}>
                   <label className="af-field">
@@ -481,7 +489,7 @@ export default function HomePage() {
               </article>
             ) : (
               <article className="af-card af-auth-card">
-                <h2>Verificación OTP</h2>
+                <h2>Verificación de código de un solo uso</h2>
                 <p>
                   Ingresá el código enviado a <strong>{credentials.email}</strong>. El código vence en 10 minutos.
                 </p>
@@ -506,7 +514,7 @@ export default function HomePage() {
 
                 {challenge.devMode && challenge.devOtpCode && (
                   <div className="af-inline-note">
-                    Modo desarrollo activo (sin SMTP): código OTP {challenge.devOtpCode}
+                    Modo desarrollo activo (sin SMTP): código de un solo uso {challenge.devOtpCode}
                   </div>
                 )}
 
@@ -542,19 +550,6 @@ export default function HomePage() {
 
         {!sessionLoading && session && (
           <section className="af-content-stack">
-            <div className="af-toolbar">
-              <div className="af-toolbar-copy">
-                <span className="af-session-title">
-                  <span className="af-online-dot" aria-hidden="true" />
-                  Afiliado en sesión activa
-                </span>
-                <strong>{context?.affiliate.fullName ?? "Cargando datos del afiliado..."}</strong>
-              </div>
-              <button type="button" className="af-btn af-btn-soft" onClick={() => void handleLogout()}>
-                Cerrar sesión
-              </button>
-            </div>
-
             {contextLoading && (
               <article className="af-card af-loading-card">
                 <h2>Cargando información del afiliado</h2>
@@ -628,6 +623,9 @@ export default function HomePage() {
                       {context.beneficiaries.map((beneficiary, index) => (
                         <div key={`${beneficiary.type}-${beneficiary.fullName}-${index}`} className="af-family-compact-item">
                           <span>{beneficiary.fullName}</span>
+                          <small className="af-family-compact-date">
+                            {formatIsoToDisplay(beneficiary.birthDate)}
+                          </small>
                           <small>{formatBeneficiaryType(beneficiary.type)}</small>
                         </div>
                       ))}
@@ -680,18 +678,21 @@ export default function HomePage() {
                         )}
                       </label>
 
-                      <div className="af-editable-age-row">
-                        <label className="af-field af-editable-group">
+                      <div className="af-editable-age-row af-editable-age-row-compact">
+                        <label className="af-field af-editable-group af-editable-retirement-age-field">
                           <span className="af-editable-label">Edad de jubilación</span>
-                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad de jubilación">
-                            <span className="af-age-current">{formatAgePickerValue(formState.retirementAge)}</span>
-                            <div className="af-age-option-track">
+                          <div
+                            className="af-age-inline-picker af-age-inline-picker-compact"
+                            role="group"
+                            aria-label="Selector de edad de jubilación"
+                          >
+                            <div className="af-age-option-track af-age-option-grid">
                               {EDITABLE_AGE_OPTIONS.map((age) => (
                                 <button
                                   type="button"
                                   key={`retirement-age-${age}`}
                                   className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.retirementAge, age) ? "af-quick-button-active" : ""}`}
-                                  onClick={() => setAgeFromQuickPicker("retirementAge", age)}
+                                  onClick={() => setRetirementAgeFromQuickPicker(age)}
                                 >
                                   {age}
                                 </button>
@@ -703,22 +704,20 @@ export default function HomePage() {
                           )}
                         </label>
 
-                        <label className="af-field af-editable-group">
+                        <label className="af-field af-editable-group af-editable-end-age-field">
                           <span className="af-editable-label">Edad fin aportes</span>
-                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad fin de aportes">
-                            <span className="af-age-current">{formatAgePickerValue(formState.voluntaryEndAge)}</span>
-                            <div className="af-age-option-track">
-                              {EDITABLE_AGE_OPTIONS.map((age) => (
-                                <button
-                                  type="button"
-                                  key={`voluntary-end-age-${age}`}
-                                  className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.voluntaryEndAge, age) ? "af-quick-button-active" : ""}`}
-                                  onClick={() => setAgeFromQuickPicker("voluntaryEndAge", age)}
-                                >
+                          <div className="af-currency-input af-currency-input-dark af-select-input-dark">
+                            <select
+                              value={formState.voluntaryEndAge}
+                              onChange={(event) => updateVoluntaryEndAgeSelection(event.target.value)}
+                              aria-label="Edad fin de aportes voluntarios"
+                            >
+                              {voluntaryEndAgeOptions.map((age) => (
+                                <option key={`voluntary-end-age-option-${age}`} value={String(age)}>
                                   {age}
-                                </button>
+                                </option>
                               ))}
-                            </div>
+                            </select>
                           </div>
                           {formErrors.voluntaryEndAge && (
                             <span className="af-field-error">{formErrors.voluntaryEndAge}</span>
@@ -864,9 +863,27 @@ export default function HomePage() {
             )}
           </section>
         )}
-      </section>
-    </main>
+    </section>
   );
+}
+
+function buildVoluntaryEndAgeLimits(retirementAge: number, currentAge: number): { min: number; max: number } {
+  const safeMax = Math.max(0, Math.trunc(retirementAge));
+  const minCandidate = Math.max(0, Math.trunc(currentAge) + 1);
+  const safeMin = Math.min(minCandidate, safeMax);
+
+  return {
+    min: safeMin,
+    max: safeMax
+  };
+}
+
+function clampInteger(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function parseEditableFormState(state: EditableFormState): EditableSimulationValues {
@@ -1063,15 +1080,6 @@ function formatKLabel(value: number): string {
   }
 
   return `${formatNumber(value / 1000)}k`;
-}
-
-function formatAgePickerValue(rawValue: string): string {
-  const parsed = toFiniteNumber(rawValue);
-  if (!Number.isFinite(parsed)) {
-    return "--";
-  }
-
-  return String(Math.max(0, Math.trunc(parsed)));
 }
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;

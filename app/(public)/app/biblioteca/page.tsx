@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ContentResponse, DocumentItem } from "@/lib/types/content";
 
+const PAGE_SIZE_OPTIONS = [10, 25] as const;
+
 function formatDate(dateIso: string): string {
   const value = new Date(dateIso);
   if (Number.isNaN(value.getTime())) {
@@ -20,12 +22,13 @@ export default function BibliotecaPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [topic, setTopic] = useState("all");
   const [fileType, setFileType] = useState("all");
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     void (async () => {
@@ -41,7 +44,6 @@ export default function BibliotecaPage() {
         }
 
         setDocuments(payload.data);
-        setSource(payload.source);
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "No fue posible cargar la biblioteca.";
         setError(message);
@@ -85,12 +87,28 @@ export default function BibliotecaPage() {
     });
   }, [category, documents, fileType, search, topic]);
 
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredDocuments.length / pageSize)),
+    [filteredDocuments.length, pageSize]
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, category, topic, fileType, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const paginatedDocuments = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredDocuments.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, filteredDocuments, pageSize]);
+
   return (
     <article className="anx-panel anx-stack">
       <header className="anx-section-header">
         <h1>Biblioteca de documentos</h1>
-        <p>Buscá, filtrá y descargá archivos operativos desde un repositorio unificado.</p>
-        {source && <small className="anx-source">Fuente: {source}</small>}
       </header>
 
       <section className="anx-filters">
@@ -158,7 +176,7 @@ export default function BibliotecaPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredDocuments.map((item) => (
+                {paginatedDocuments.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <div className="anx-table-title">{item.title}</div>
@@ -178,6 +196,41 @@ export default function BibliotecaPage() {
               </tbody>
             </table>
           </div>
+
+          <nav className="anx-pagination anx-pagination-library" aria-label="Paginación de biblioteca">
+            <label className="anx-pagination-size">
+              Documentos por página
+              <select value={String(pageSize)} onChange={(event) => setPageSize(Number(event.target.value))}>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="anx-pagination-controls">
+              <button
+                type="button"
+                className="anx-ghost-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                Anterior
+              </button>
+              <span className="anx-pagination-page">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                type="button"
+                className="anx-ghost-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Siguiente
+              </button>
+            </div>
+          </nav>
         </>
       )}
     </article>

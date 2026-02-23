@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 const payloadSchema = z.object({
   challengeId: z.string().trim().min(1),
-  code: z.string().regex(/^\d{6}$/, "El código OTP debe tener 6 dígitos")
+  code: z.string().regex(/^\d{6}$/, "El código de un solo uso debe tener 6 dígitos")
 });
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -51,7 +51,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const message = error instanceof Error ? error.message : "Error no controlado";
     return NextResponse.json(
       {
-        error: "No se pudo validar el OTP fake.",
+        error: "No se pudo validar el código de un solo uso fake.",
         code: "FAKE_AUTH_SESSION_ERROR",
         details: message
       },

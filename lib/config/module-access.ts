@@ -31,7 +31,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Preguntas frecuentes organizadas por tema.",
     path: "/app/faq",
     visibility: "public",
-    enabled: true
+    enabled: false
   },
   {
     key: "repositorio-normativo",
@@ -39,7 +39,7 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Ley, reglamentos y resoluciones de consulta.",
     path: "/app/repositorio-normativo",
     visibility: "public",
-    enabled: true,
+    enabled: false,
     badge: "Normativo"
   },
   {
@@ -51,13 +51,29 @@ const BASE_MODULES: ModuleDescriptor[] = [
     enabled: true
   },
   {
+    key: "tramites",
+    title: "Trámites",
+    description: "Generación de BEP para aportes a través de Comunidad Vinculada - Personería Jurídica.",
+    path: "/app/tramites",
+    visibility: "private",
+    enabled: true
+  },
+  {
+    key: "chatbot-cps",
+    title: "Chatbot CPS",
+    description: "Asistente documental con búsqueda sobre normativa y procesos.",
+    path: "/app/chatbot",
+    visibility: "public",
+    enabled: false,
+    badge: "IA"
+  },
+  {
     key: "simulador-previsional",
     title: "Simulador previsional",
     description: "Proyección previsional personalizada del afiliado.",
     path: "/app/simuladores/previsional",
     visibility: "private",
-    enabled: true,
-    badge: "Privado"
+    enabled: true
   },
   {
     key: "simulador-prestamos",
@@ -65,13 +81,12 @@ const BASE_MODULES: ModuleDescriptor[] = [
     description: "Subapp de préstamos reservada para la próxima etapa.",
     path: "/app/simuladores/prestamos",
     visibility: "private",
-    enabled: true,
-    badge: "Privado"
+    enabled: true
   },
   {
     key: "acceso",
     title: "Acceso",
-    description: "Ingreso OTP para secciones privadas.",
+    description: "Ingreso con código de un solo uso para secciones privadas.",
     path: "/app/acceso",
     visibility: "public",
     enabled: false

@@ -9,6 +9,8 @@ const OTP_MAX_ATTEMPTS = 5;
 export interface AuthSessionState {
   email: string;
   expiresAt: number;
+  fullName?: string;
+  fileNumber?: string;
 }
 
 export interface AuthChallengeState {
@@ -114,24 +116,34 @@ function setSignedCookie(
 
 export function setAuthSessionCookie(
   response: NextResponse,
-  payload: { email: string }
+  payload: { email: string; fullName?: string | null; fileNumber?: string | null }
 ): void {
   const expiresAt = nowEpochSeconds() + SESSION_MAX_AGE_SECONDS;
+  const normalizedFullName = payload.fullName?.trim();
+  const normalizedFileNumber = payload.fileNumber?.trim();
   const state: AuthSessionState = {
     email: payload.email,
-    expiresAt
+    expiresAt,
+    ...(normalizedFullName ? { fullName: normalizedFullName } : {}),
+    ...(normalizedFileNumber ? { fileNumber: normalizedFileNumber } : {})
   };
 
   setSignedCookie(response, getAuthSessionCookieName(), state, SESSION_MAX_AGE_SECONDS);
 }
 
-export function getAuthSessionFromRequest(request: Request): AuthSessionState | null {
-  const raw = readCookieFromRequest(request, getAuthSessionCookieName());
-  if (!raw) {
+export function parseAuthSessionCookieValue(rawValue: string | null | undefined): AuthSessionState | null {
+  if (!rawValue) {
     return null;
   }
 
-  const payload = decodeSigned<AuthSessionState>(raw);
+  let decodedValue = rawValue;
+  try {
+    decodedValue = decodeURIComponent(rawValue);
+  } catch {
+    decodedValue = rawValue;
+  }
+
+  const payload = decodeSigned<AuthSessionState>(decodedValue);
   if (!payload) {
     return null;
   }
@@ -140,11 +152,23 @@ export function getAuthSessionFromRequest(request: Request): AuthSessionState | 
     return null;
   }
 
+  if (
+    ("fullName" in payload && payload.fullName !== undefined && typeof payload.fullName !== "string") ||
+    ("fileNumber" in payload && payload.fileNumber !== undefined && typeof payload.fileNumber !== "string")
+  ) {
+    return null;
+  }
+
   if (payload.expiresAt <= nowEpochSeconds()) {
     return null;
   }
 
   return payload;
+}
+
+export function getAuthSessionFromRequest(request: Request): AuthSessionState | null {
+  const raw = readCookieFromRequest(request, getAuthSessionCookieName());
+  return parseAuthSessionCookieValue(raw);
 }
 
 export function clearAuthSessionCookie(response: NextResponse): void {

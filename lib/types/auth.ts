@@ -22,4 +22,6 @@ export type SessionInfo =
   | {
       authenticated: true;
       email: string;
+      fullName?: string;
+      fileNumber?: string;
     };

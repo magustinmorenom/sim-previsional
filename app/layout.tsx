@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Plataforma de Servicios SPS",
+  title: "CPS",
   description:
-    "App anexa a WordPress con biblioteca documental, procesos, consultas y subapps de simulación para afiliados"
+    "Sistema de gestión para afiliados con biblioteca documental, procesos, consultas y simuladores"
 };
 
 export default function RootLayout({

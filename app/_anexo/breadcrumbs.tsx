@@ -10,6 +10,7 @@ const segmentLabelMap: Record<string, string> = {
   faq: "FAQ",
   "repositorio-normativo": "Normativa",
   consultas: "Consultas",
+  tramites: "Trámites",
   simuladores: "Simuladores",
   previsional: "Previsional",
   prestamos: "Préstamos",

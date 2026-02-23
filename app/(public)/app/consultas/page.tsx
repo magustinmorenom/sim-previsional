@@ -21,7 +21,6 @@ function resolveButtonLabel(type: ContactChannel["type"]): string {
 
 export default function ConsultasPage() {
   const [channels, setChannels] = useState<ContactChannel[]>([]);
-  const [source, setSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +38,6 @@ export default function ConsultasPage() {
         }
 
         setChannels(payload.data);
-        setSource(payload.source);
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "No fue posible cargar los canales de consulta.";
         setError(message);
@@ -53,8 +51,6 @@ export default function ConsultasPage() {
     <section className="anx-stack">
       <article className="anx-panel anx-section-header">
         <h1>Consultas y derivación</h1>
-        <p>Canales rápidos para resolver dudas y derivar gestiones operativas.</p>
-        {source && <small className="anx-source">Fuente: {source}</small>}
       </article>
 
       {loading && <p className="anx-status">Cargando canales...</p>}

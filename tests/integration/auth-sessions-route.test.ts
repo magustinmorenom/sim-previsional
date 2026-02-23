@@ -71,7 +71,7 @@ describe("/api/v1/auth/sessions", () => {
     expect(response.status).toBe(200);
     expect(body.authenticated).toBe(true);
     expect(response.cookies.get(getAuthSessionCookieName())?.value).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("responde 401 si no existe challenge activo", async () => {

@@ -68,9 +68,6 @@ export default function PrestamosSimulatorPage(): JSX.Element {
 
   const cuotasConsumo = selectedLinea?.esConsumo ? selectedLinea.plazosDisponibles ?? [] : [];
 
-  const sourceCatalogo = bootstrap?.catalogoSource ?? "unknown";
-  const sourceTasas = bootstrap?.tasasSource ?? "unknown";
-
   return (
     <section className={styles.root}>
       <article className={`anx-panel ${styles.hero}`}>
@@ -79,20 +76,7 @@ export default function PrestamosSimulatorPage(): JSX.Element {
           Simulá líneas activas, compará escenarios y exportá resultados. La elegibilidad final se
           confirma con validaciones operativas del SPS.
         </p>
-        <div className={styles.sourcePills}>
-          <span className={styles.sourceBadge}>Catálogo: {sourceCatalogo}</span>
-          <span className={styles.sourceBadge}>Tasas: {sourceTasas}</span>
-          {bootstrap?.catalogo.data.meta && (
-            <span className={styles.sourceBadge}>
-              Generado: {formatIsoDate(bootstrap.catalogo.data.meta.generadoEn)}
-            </span>
-          )}
-        </div>
       </article>
-
-      <p className={styles.warning}>
-        Se muestran todas las líneas disponibles. La condición final del afiliado se valida en la capa de negocio al confirmar la solicitud.
-      </p>
 
       {loadingBootstrap && <p className="anx-status">Cargando catálogo y tasas de préstamos...</p>}
       {bootstrapError && <p className="anx-status anx-status-error">{bootstrapError}</p>}

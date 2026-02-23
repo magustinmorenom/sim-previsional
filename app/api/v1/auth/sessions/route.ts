@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { CreateSessionRequest } from "@/lib/types/auth";
-import { verifyRemoteAuthCode, RemoteApiError } from "@/lib/server/remote-api-client";
+import {
+  fetchRemoteAffiliateSimulationContext,
+  verifyRemoteAuthCode,
+  RemoteApiError
+} from "@/lib/server/remote-api-client";
 import {
   clearAuthChallengeCookie,
   clearAuthSessionCookie,
@@ -17,8 +21,93 @@ export const runtime = "nodejs";
 
 const createSessionSchema = z.object({
   challengeId: z.string().trim().min(1),
-  code: z.string().regex(/^\d{6}$/, "El código OTP debe tener 6 dígitos")
+  code: z.string().regex(/^\d{6}$/, "El código de un solo uso debe tener 6 dígitos")
 });
+
+interface AffiliateIdentity {
+  fullName?: string;
+  fileNumber?: string;
+}
+
+function buildFallbackAffiliateName(email: string): string {
+  const localPart = email.split("@")[0]?.trim();
+  if (!localPart) {
+    return "Afiliado";
+  }
+
+  const normalized = localPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "Afiliado";
+  }
+
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function readPathValue(payload: Record<string, unknown>, path: string): unknown {
+  const segments = path.split(".");
+  let current: unknown = payload;
+
+  for (const segment of segments) {
+    if (!current || typeof current !== "object" || !(segment in current)) {
+      return null;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
+}
+
+function readString(payload: Record<string, unknown>, paths: string[]): string | null {
+  for (const path of paths) {
+    const value = readPathValue(payload, path);
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  return null;
+}
+
+function pickAffiliateIdentity(remotePayload: unknown, email: string): AffiliateIdentity {
+  if (!remotePayload || typeof remotePayload !== "object") {
+    return {
+      fullName: buildFallbackAffiliateName(email)
+    };
+  }
+
+  const payload = remotePayload as Record<string, unknown>;
+  const fullName =
+    readString(payload, ["affiliate.fullName", "affiliate.name", "fullName", "name"]) ??
+    buildFallbackAffiliateName(email);
+  const fileNumber = readString(payload, [
+    "affiliate.fileNumber",
+    "affiliate.legajo",
+    "affiliate.memberNumber",
+    "affiliate.memberId",
+    "fileNumber",
+    "legajo",
+    "memberNumber",
+    "memberId"
+  ]);
+
+  return {
+    fullName,
+    ...(fileNumber ? { fileNumber } : {})
+  };
+}
 
 function errorResponse(
   status: number,
@@ -51,14 +140,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     const challengeState = getAuthChallengeFromRequest(request);
     if (!challengeState) {
       return errorResponse(401, {
-        error: "No existe un desafío OTP activo.",
+        error: "No existe un desafío de código de un solo uso activo.",
         code: "AUTH_CHALLENGE_REQUIRED"
       });
     }
 
     if (challengeState.challengeId !== parsed.data.challengeId) {
       return errorResponse(401, {
-        error: "El desafío OTP no coincide con la sesión activa.",
+        error: "El desafío de código de un solo uso no coincide con la sesión activa.",
         code: "AUTH_CHALLENGE_MISMATCH"
       });
     }
@@ -67,7 +156,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         410,
         {
-          error: "El código OTP expiró. Solicitá uno nuevo.",
+          error: "El código de un solo uso expiró. Solicitá uno nuevo.",
           code: "OTP_EXPIRED"
         },
         (response) => {
@@ -80,7 +169,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         429,
         {
-          error: "Se alcanzó el máximo de intentos para este código OTP.",
+          error: "Se alcanzó el máximo de intentos para este código de un solo uso.",
           code: "OTP_MAX_ATTEMPTS_REACHED"
         },
         (response) => {
@@ -93,9 +182,24 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     try {
       await verifyRemoteAuthCode(parsed.data);
+      let identity: AffiliateIdentity = {
+        fullName: buildFallbackAffiliateName(challengeState.email)
+      };
+
+      try {
+        const remotePayload = await fetchRemoteAffiliateSimulationContext({
+          email: challengeState.email
+        });
+        identity = pickAffiliateIdentity(remotePayload, challengeState.email);
+      } catch {
+        // No bloquea login si falla la consulta de identidad.
+      }
+
       const response = NextResponse.json({ authenticated: true }, { status: 200 });
       setAuthSessionCookie(response, {
-        email: challengeState.email
+        email: challengeState.email,
+        fullName: identity.fullName,
+        fileNumber: identity.fileNumber
       });
       clearAuthChallengeCookie(response);
       return response;
@@ -123,7 +227,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         return errorResponse(
           502,
           {
-            error: "No fue posible validar el código OTP.",
+            error: "No fue posible validar el código de un solo uso.",
             code: error.code,
             details: error.details
           },
@@ -137,7 +241,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return errorResponse(
         502,
         {
-          error: "No fue posible validar el código OTP.",
+          error: "No fue posible validar el código de un solo uso.",
           code: "OTP_VALIDATION_FAILED",
           details: message
         },
@@ -174,7 +278,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   return NextResponse.json(
     {
       authenticated: true,
-      email: session.email
+      email: session.email,
+      ...(session.fullName ? { fullName: session.fullName } : {}),
+      ...(session.fileNumber ? { fileNumber: session.fileNumber } : {})
     },
     { status: 200 }
   );

@@ -55,7 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!metadata) {
       return NextResponse.json(
         {
-          error: "No se pudo persistir el desafío OTP.",
+          error: "No se pudo persistir el desafío del código de un solo uso.",
           code: "FAKE_AUTH_CHALLENGE_STORE_ERROR"
         },
         { status: 502 }
@@ -78,7 +78,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const message = error instanceof Error ? error.message : "Error no controlado";
     return NextResponse.json(
       {
-        error: "No se pudo crear el desafío OTP fake.",
+        error: "No se pudo crear el desafío fake del código de un solo uso.",
         code: "FAKE_AUTH_CHALLENGE_ERROR",
         details: message
       },

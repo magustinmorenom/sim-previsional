@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ModuleIcon } from "@/app/_anexo/module-icons";
 import type { ModuleDescriptor } from "@/lib/types/content";
 
 interface TopNavProps {
   modules: ModuleDescriptor[];
   hasSession: boolean;
+  className?: string;
 }
 
 function normalizePath(path: string): string {
@@ -17,6 +19,10 @@ function isActivePath(pathname: string, target: string): boolean {
   const normalizedPathname = normalizePath(pathname);
   const normalizedTarget = normalizePath(target);
 
+  if (normalizedTarget === "/app") {
+    return normalizedPathname === "/app";
+  }
+
   if (normalizedPathname === normalizedTarget) {
     return true;
   }
@@ -24,11 +30,16 @@ function isActivePath(pathname: string, target: string): boolean {
   return normalizedPathname.startsWith(`${normalizedTarget}/`);
 }
 
-export function TopNav({ modules, hasSession }: TopNavProps) {
+function isSimulatorModule(module: ModuleDescriptor): boolean {
+  return module.key === "simulador-previsional" || module.key === "simulador-prestamos";
+}
+
+export function TopNav({ modules, hasSession, className }: TopNavProps) {
   const pathname = usePathname();
+  const navClassName = className ? `anx-topnav ${className}` : "anx-topnav";
 
   return (
-    <nav className="anx-topnav" aria-label="Navegación principal">
+    <nav className={navClassName} aria-label="Navegación principal">
       <div className="anx-topnav-scroll">
         {modules.map((module) => {
           const active = isActivePath(pathname, module.path);
@@ -36,15 +47,18 @@ export function TopNav({ modules, hasSession }: TopNavProps) {
           const destination = isPrivate && !hasSession
             ? `/app/acceso?next=${encodeURIComponent(module.path)}`
             : module.path;
+          const simulatorClass = isSimulatorModule(module) ? "anx-topnav-link-simulator" : "";
+          const activeClass = active ? "anx-topnav-link-active" : "";
 
           return (
             <Link
               key={module.key}
               href={destination}
-              className={`anx-topnav-link ${active ? "anx-topnav-link-active" : ""}`}
+              className={`anx-topnav-link ${simulatorClass} ${activeClass}`.trim()}
             >
-              <span>{module.title}</span>
-              {isPrivate && <small>{hasSession ? "Privado" : "Login"}</small>}
+              <ModuleIcon moduleKey={module.key} className="anx-topnav-link-icon" />
+              <span className="anx-topnav-link-label">{module.title}</span>
+              {isPrivate && !hasSession && <small>Login</small>}
             </Link>
           );
         })}
