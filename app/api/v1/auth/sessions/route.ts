@@ -6,6 +6,8 @@ import {
   verifyRemoteAuthCode,
   RemoteApiError
 } from "@/lib/server/remote-api-client";
+import { isOtpBypassMode } from "@/lib/server/otp-delivery";
+import { verifyBypassOtpChallenge } from "@/lib/server/otp-bypass-store";
 import {
   clearAuthChallengeCookie,
   clearAuthSessionCookie,
@@ -89,14 +91,20 @@ function pickAffiliateIdentity(remotePayload: unknown, email: string): Affiliate
   }
 
   const payload = remotePayload as Record<string, unknown>;
+  const titularName = readString(payload, ["data.titular.nombre", "titular.nombre"]);
+  const titularSurname = readString(payload, ["data.titular.apellido", "titular.apellido"]);
+  const fullNameFromInfo = [titularName, titularSurname].filter(Boolean).join(" ").trim();
   const fullName =
     readString(payload, ["affiliate.fullName", "affiliate.name", "fullName", "name"]) ??
+    (fullNameFromInfo.length > 0 ? fullNameFromInfo : null) ??
     buildFallbackAffiliateName(email);
   const fileNumber = readString(payload, [
     "affiliate.fileNumber",
     "affiliate.legajo",
     "affiliate.memberNumber",
     "affiliate.memberId",
+    "data.titular.legajo",
+    "titular.legajo",
     "fileNumber",
     "legajo",
     "memberNumber",
@@ -107,6 +115,23 @@ function pickAffiliateIdentity(remotePayload: unknown, email: string): Affiliate
     fullName,
     ...(fileNumber ? { fileNumber } : {})
   };
+}
+
+async function resolveAffiliateIdentity(email: string): Promise<AffiliateIdentity> {
+  let identity: AffiliateIdentity = {
+    fullName: buildFallbackAffiliateName(email)
+  };
+
+  try {
+    const remotePayload = await fetchRemoteAffiliateSimulationContext({
+      email
+    });
+    identity = pickAffiliateIdentity(remotePayload, email);
+  } catch {
+    // No bloquea login si falla la consulta de identidad.
+  }
+
+  return identity;
 }
 
 function errorResponse(
@@ -179,21 +204,41 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const updatedChallengeState = increaseChallengeAttempts(challengeState);
+    const bypassMode = isOtpBypassMode();
 
     try {
-      await verifyRemoteAuthCode(parsed.data);
-      let identity: AffiliateIdentity = {
-        fullName: buildFallbackAffiliateName(challengeState.email)
-      };
-
-      try {
-        const remotePayload = await fetchRemoteAffiliateSimulationContext({
-          email: challengeState.email
+      if (bypassMode) {
+        const bypassValidation = verifyBypassOtpChallenge({
+          challengeId: parsed.data.challengeId,
+          email: challengeState.email,
+          code: parsed.data.code
         });
-        identity = pickAffiliateIdentity(remotePayload, challengeState.email);
-      } catch {
-        // No bloquea login si falla la consulta de identidad.
+
+        if (!bypassValidation.ok) {
+          return errorResponse(
+            bypassValidation.status,
+            {
+              error: bypassValidation.error,
+              code: bypassValidation.code
+            },
+            (response) => {
+              if (
+                bypassValidation.status === 410 ||
+                bypassValidation.code === "OTP_BYPASS_CHALLENGE_NOT_FOUND"
+              ) {
+                clearAuthChallengeCookie(response);
+                return;
+              }
+
+              setAuthChallengeCookie(response, updatedChallengeState);
+            }
+          );
+        }
+      } else {
+        await verifyRemoteAuthCode(parsed.data);
       }
+
+      const identity = await resolveAffiliateIdentity(challengeState.email);
 
       const response = NextResponse.json({ authenticated: true }, { status: 200 });
       setAuthSessionCookie(response, {

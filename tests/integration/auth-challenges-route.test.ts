@@ -4,13 +4,19 @@ import { getAuthChallengeCookieName } from "@/lib/server/session";
 
 describe("POST /api/v1/auth/challenges", () => {
   const originalBaseUrl = process.env.REMOTE_API_BASE_URL;
+  const originalOtpMode = process.env.OTP_DELIVERY_MODE;
+  const originalBypassAllowlist = process.env.OTP_BYPASS_ALLOWED_EMAILS;
 
   beforeEach(() => {
     process.env.REMOTE_API_BASE_URL = "https://remote.example.test";
+    delete process.env.OTP_DELIVERY_MODE;
+    delete process.env.OTP_BYPASS_ALLOWED_EMAILS;
   });
 
   afterEach(() => {
     process.env.REMOTE_API_BASE_URL = originalBaseUrl;
+    restoreEnv("OTP_DELIVERY_MODE", originalOtpMode);
+    restoreEnv("OTP_BYPASS_ALLOWED_EMAILS", originalBypassAllowlist);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -71,4 +77,40 @@ describe("POST /api/v1/auth/challenges", () => {
     expect(response.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("en bypass devuelve devOtpCode y no llama API remota", async () => {
+    process.env.OTP_DELIVERY_MODE = "bypass";
+    process.env.OTP_BYPASS_ALLOWED_EMAILS = "afiliado@test.com";
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new Request("http://localhost/api/v1/auth/challenges", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: "afiliado@test.com"
+      })
+    });
+
+    const response = await createAuthChallenge(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.devMode).toBe(true);
+    expect(body.devOtpCode).toMatch(/^\d{6}$/);
+    expect(response.cookies.get(getAuthChallengeCookieName())?.value).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}

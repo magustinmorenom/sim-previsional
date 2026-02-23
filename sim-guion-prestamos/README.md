@@ -16,7 +16,8 @@ Módulo de simulación de préstamos para la app anexa, con dos etapas de integr
 ## Variables de entorno relevantes
 
 - `PRESTAMOS_API_BASE_URL`: base URL que consume el BFF interno.
-- `PRESTAMOS_API_KEY`: API key que reenvía el BFF al upstream.
+- `API_KEY_CPS`: API key general CPS que reenvía el BFF al upstream.
+- `PRESTAMOS_API_KEY`: alias legado (fallback de compatibilidad).
 - `PRESTAMOS_API_TIMEOUT_MS`: timeout de requests al upstream.
 - `ENABLE_PRESTAMOS_SIMULATION`: habilita `POST /api/v1/public/prestamos/simulate`.
 - `ENABLE_PRESTAMOS_UI_V2`: habilita la nueva experiencia de UI en `/app/simuladores/prestamos`.
@@ -39,5 +40,5 @@ npm run dev:prestamos
 
 ## Integración API externa (fase real)
 
-Actualizar solo `PRESTAMOS_API_BASE_URL` y `PRESTAMOS_API_KEY`.
+Actualizar solo `PRESTAMOS_API_BASE_URL` y `API_KEY_CPS`.
 El frontend se mantiene consumiendo rutas internas `/api/v1/public/prestamos/*`.

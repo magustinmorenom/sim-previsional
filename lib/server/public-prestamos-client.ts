@@ -35,7 +35,7 @@ function getPublicPrestamosBaseUrl(): string {
 }
 
 function getApiKey(): string {
-  return process.env.PRESTAMOS_API_KEY?.trim() || "";
+  return process.env.API_KEY_CPS?.trim() || process.env.PRESTAMOS_API_KEY?.trim() || "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

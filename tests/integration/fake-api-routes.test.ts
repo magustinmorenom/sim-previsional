@@ -31,14 +31,14 @@ describe("fake API routes", () => {
     restoreEnv("SMTP_FROM", envBackup.SMTP_FROM);
   });
 
-  it("crea challenge OTP fake para amoreno@odin.ar y permite validar código", async () => {
+  it("crea challenge OTP fake para nicolasfuentesg06@gmail.com y permite validar código", async () => {
     const challengeRequest = new Request("http://localhost/api/fake/v1/auth/challenges", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        email: "amoreno@odin.ar"
+        email: "nicolasfuentesg06@gmail.com"
       })
     });
 
@@ -65,12 +65,12 @@ describe("fake API routes", () => {
 
     expect(sessionResponse.status).toBe(200);
     expect(sessionBody.authenticated).toBe(true);
-    expect(sessionBody.email).toBe("amoreno@odin.ar");
+    expect(sessionBody.email).toBe("nicolasfuentesg06@gmail.com");
   });
 
   it("expone contexto fake para ambos correos habilitados", async () => {
     const requestOne = new Request(
-      "http://localhost/api/fake/v1/affiliates/simulation-context?email=amoreno@odin.ar",
+      "http://localhost/api/fake/v1/affiliates/simulation-context?email=nicolasfuentesg06@gmail.com",
       {
         method: "GET"
       }
@@ -79,7 +79,7 @@ describe("fake API routes", () => {
     const bodyOne = await responseOne.json();
 
     expect(responseOne.status).toBe(200);
-    expect(bodyOne.affiliate.email).toBe("amoreno@odin.ar");
+    expect(bodyOne.affiliate.email).toBe("nicolasfuentesg06@gmail.com");
     expect(bodyOne.affiliate.fullName).toBeTruthy();
     expect(bodyOne.beneficiaries[0].fullName).toBeTruthy();
     expect(bodyOne.beneficiaries.length).toBeGreaterThan(0);

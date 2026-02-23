@@ -82,6 +82,7 @@ npm run mock:prestamos
 
 ```bash
 PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/
+API_KEY_CPS=tu_api_key
 ENABLE_PRESTAMOS_SIMULATION=true
 ENABLE_PRESTAMOS_UI_V2=true
 ```
@@ -91,6 +92,18 @@ ENABLE_PRESTAMOS_UI_V2=true
 ```bash
 npm run dev:prestamos
 ```
+
+## OTP QA (sin envío de correo)
+
+Para pruebas con correos reales sin enviar código por SMTP:
+
+```bash
+OTP_DELIVERY_MODE=bypass
+OTP_BYPASS_ALLOWED_EMAILS=correo1@dominio.com,correo2@dominio.com
+```
+
+En bypass el backend devuelve `devOtpCode` y la validación se realiza localmente.
+En producción, bypass queda deshabilitado salvo override explícito (`OTP_BYPASS_ALLOW_IN_PROD=true`).
 
 ## Regla de operación exacta
 

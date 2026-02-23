@@ -260,6 +260,192 @@ function isGeneratedBeneficiaryName(name: string): boolean {
   return /^(Titular|Cónyuge(?: \d+)?|Hijo(?: \d+)?)$/.test(name);
 }
 
+function normalizeNamePart(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+}
+
+function joinName(parts: Array<unknown>): string {
+  return parts.map(normalizeNamePart).filter(Boolean).join(" ").trim();
+}
+
+function parseExternalSex(value: unknown): 1 | 2 | null {
+  if (value === 1 || value === "1") {
+    return 1;
+  }
+
+  if (value === 2 || value === "2") {
+    return 2;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized === "M" || normalized === "MASCULINO" || normalized === "HOMBRE") {
+    return 1;
+  }
+
+  if (normalized === "F" || normalized === "FEMENINO" || normalized === "MUJER") {
+    return 2;
+  }
+
+  return null;
+}
+
+function parseExternalInvalid(value: unknown): 0 | 1 {
+  if (value === 1 || value === "1" || value === true) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function parseExternalRelation(value: unknown): "C" | "H" | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized.includes("CONY")) {
+    return "C";
+  }
+
+  if (normalized.includes("HIJ")) {
+    return "H";
+  }
+
+  return null;
+}
+
+function toIsoDateToday(): string {
+  const now = new Date();
+  const year = String(now.getFullYear()).padStart(4, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function mapInfoPayloadToCanonical(
+  payload: Record<string, unknown>,
+  sessionEmail: string
+): Record<string, unknown> | null {
+  const data = readPathValue(payload, "data");
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const dataRecord = data as Record<string, unknown>;
+  const titularRaw = readPathValue(dataRecord, "titular");
+  if (!titularRaw || typeof titularRaw !== "object") {
+    return null;
+  }
+
+  const titularRecord = titularRaw as Record<string, unknown>;
+  const titularFullName =
+    joinName([titularRecord.nombre, titularRecord.apellido]) ||
+    readString(titularRecord, ["fullName", "name"]) ||
+    "Titular";
+  const titularBirthDate =
+    readString(titularRecord, ["fechaNacimiento", "birthDate"]) || "";
+  const titularSex = parseExternalSex(titularRecord.sexo ?? titularRecord.sex) ?? 1;
+  const titularInvalid = parseExternalInvalid(
+    titularRecord.invalido ?? titularRecord.invalid
+  );
+  const titularFileNumber =
+    readString(titularRecord, ["legajo", "fileNumber", "memberNumber"]) || null;
+
+  const beneficiaries: Array<Record<string, unknown>> = [
+    {
+      fullName: titularFullName,
+      type: "T",
+      sex: titularSex,
+      birthDate: titularBirthDate,
+      invalid: titularInvalid
+    }
+  ];
+
+  const familyRaw = readPathValue(dataRecord, "grupoFamiliar");
+  if (Array.isArray(familyRaw)) {
+    familyRaw.forEach((item) => {
+      if (!item || typeof item !== "object") {
+        return;
+      }
+
+      const row = item as Record<string, unknown>;
+      const relationType = parseExternalRelation(row.relacion ?? row.type);
+      if (!relationType) {
+        return;
+      }
+
+      const fullName =
+        joinName([row.nombre, row.apellido]) ||
+        readString(row, ["fullName", "name"]) ||
+        (relationType === "C" ? "Cónyuge" : "Hijo");
+      const birthDate = readString(row, ["fechaNacimiento", "birthDate"]) || "";
+      const invalid = parseExternalInvalid(row.invalido ?? row.invalid);
+      const explicitSex = parseExternalSex(row.sexo ?? row.sex);
+      const resolvedSex =
+        explicitSex ??
+        (relationType === "C" ? (titularSex === 1 ? 2 : 1) : titularSex);
+
+      beneficiaries.push({
+        fullName,
+        type: relationType,
+        sex: resolvedSex,
+        birthDate,
+        invalid
+      });
+    });
+  }
+
+  const mandatoryFunds = readNumber(dataRecord, [
+    "cuentaCapitalizacion.aportesObligatorios",
+    "funds.mandatory"
+  ]);
+  const voluntaryFunds = readNumber(dataRecord, [
+    "cuentaCapitalizacion.aportesVoluntarios",
+    "funds.voluntary"
+  ]);
+  const bov = readNumber(dataRecord, ["valorVAR", "bov", "var", "varValue", "targetValue"]);
+
+  const calculationDate =
+    readString(payload, ["calculationDate", "calculation_date"]) ??
+    readString(dataRecord, ["calculationDate", "fechaCalculo"]) ??
+    toIsoDateToday();
+
+  return {
+    calculationDate,
+    affiliate: {
+      email: sessionEmail,
+      fullName: titularFullName,
+      ...(titularFileNumber ? { fileNumber: titularFileNumber } : {})
+    },
+    funds: {
+      ...(mandatoryFunds !== null ? { mandatory: mandatoryFunds } : {}),
+      ...(voluntaryFunds !== null ? { voluntary: voluntaryFunds } : {})
+    },
+    bov,
+    beneficiaries
+  };
+}
+
+function normalizeRemotePayload(
+  rawPayload: Record<string, unknown>,
+  sessionEmail: string
+): Record<string, unknown> {
+  const canonicalFromInfo = mapInfoPayloadToCanonical(rawPayload, sessionEmail);
+  if (canonicalFromInfo) {
+    return canonicalFromInfo;
+  }
+
+  return rawPayload;
+}
+
 function pickCalculationDate(payload: Record<string, unknown>, issues: string[]): string {
   const calculationDate = readString(payload, ["calculationDate", "calculation_date"]);
   if (!calculationDate || !isValidIsoDate(calculationDate)) {
@@ -278,7 +464,10 @@ export function mapRemoteContextToAffiliateContext(
     throw new AffiliateContextValidationError("Payload remoto inválido.", ["El payload remoto no es un objeto."]);
   }
 
-  const payload = remotePayload as Record<string, unknown>;
+  const payload = normalizeRemotePayload(
+    remotePayload as Record<string, unknown>,
+    session.email
+  );
   const issues: string[] = [];
 
   const calculationDate = pickCalculationDate(payload, issues);

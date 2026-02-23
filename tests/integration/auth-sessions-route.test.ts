@@ -5,6 +5,7 @@ import {
   GET as getSession,
   POST as createSession
 } from "@/app/api/v1/auth/sessions/route";
+import { POST as createAuthChallenge } from "@/app/api/v1/auth/challenges/route";
 import {
   createChallengeState,
   getAuthChallengeCookieName,
@@ -31,13 +32,19 @@ function buildChallengeCookieHeader(): string {
 
 describe("/api/v1/auth/sessions", () => {
   const originalBaseUrl = process.env.REMOTE_API_BASE_URL;
+  const originalOtpMode = process.env.OTP_DELIVERY_MODE;
+  const originalBypassAllowlist = process.env.OTP_BYPASS_ALLOWED_EMAILS;
 
   beforeEach(() => {
     process.env.REMOTE_API_BASE_URL = "https://remote.example.test";
+    delete process.env.OTP_DELIVERY_MODE;
+    delete process.env.OTP_BYPASS_ALLOWED_EMAILS;
   });
 
   afterEach(() => {
     process.env.REMOTE_API_BASE_URL = originalBaseUrl;
+    restoreEnv("OTP_DELIVERY_MODE", originalOtpMode);
+    restoreEnv("OTP_BYPASS_ALLOWED_EMAILS", originalBypassAllowlist);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -141,4 +148,69 @@ describe("/api/v1/auth/sessions", () => {
     const deleteResponse = await deleteSession();
     expect(deleteResponse.status).toBe(204);
   });
+
+  it("en bypass valida OTP local y crea sesión sin verificar OTP remoto", async () => {
+    process.env.OTP_DELIVERY_MODE = "bypass";
+    process.env.OTP_BYPASS_ALLOWED_EMAILS = "afiliado@test.com";
+
+    const challengeRequest = new Request("http://localhost/api/v1/auth/challenges", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: "afiliado@test.com"
+      })
+    });
+    const challengeResponse = await createAuthChallenge(challengeRequest);
+    const challengeBody = await challengeResponse.json();
+    const challengeCookie = challengeResponse.cookies.get(getAuthChallengeCookieName())?.value;
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          affiliate: {
+            fullName: "Afiliado Test",
+            legajo: "CP100"
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new Request("http://localhost/api/v1/auth/sessions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: `${getAuthChallengeCookieName()}=${challengeCookie}`
+      },
+      body: JSON.stringify({
+        challengeId: challengeBody.challengeId,
+        code: challengeBody.devOtpCode
+      })
+    });
+
+    const response = await createSession(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.authenticated).toBe(true);
+    expect(response.cookies.get(getAuthSessionCookieName())?.value).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}

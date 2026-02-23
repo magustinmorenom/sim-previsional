@@ -5,9 +5,11 @@ import { POST as postSimulate } from "@/app/api/v1/public/prestamos/simulate/rou
 describe("public prestamos routes", () => {
   it("GET /api/v1/public/prestamos/lineas responde líneas", async () => {
     const previousBaseUrl = process.env.PRESTAMOS_API_BASE_URL;
-    const previousApiKey = process.env.PRESTAMOS_API_KEY;
+    const previousApiKey = process.env.API_KEY_CPS;
+    const previousLegacyApiKey = process.env.PRESTAMOS_API_KEY;
     process.env.PRESTAMOS_API_BASE_URL = "http://example.test/";
-    process.env.PRESTAMOS_API_KEY = "widget_key_dev_12345";
+    process.env.API_KEY_CPS = "widget_key_dev_12345";
+    delete process.env.PRESTAMOS_API_KEY;
 
     const lineasPayload = [
       {
@@ -43,9 +45,14 @@ describe("public prestamos routes", () => {
         process.env.PRESTAMOS_API_BASE_URL = previousBaseUrl;
       }
       if (previousApiKey === undefined) {
+        delete process.env.API_KEY_CPS;
+      } else {
+        process.env.API_KEY_CPS = previousApiKey;
+      }
+      if (previousLegacyApiKey === undefined) {
         delete process.env.PRESTAMOS_API_KEY;
       } else {
-        process.env.PRESTAMOS_API_KEY = previousApiKey;
+        process.env.PRESTAMOS_API_KEY = previousLegacyApiKey;
       }
       vi.unstubAllGlobals();
     }

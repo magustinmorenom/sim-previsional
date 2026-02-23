@@ -47,6 +47,17 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     if (error instanceof RemoteApiError) {
+      if (error.status === 404) {
+        return NextResponse.json(
+          {
+            error: "No existe información del afiliado para ese correo en la API remota.",
+            code: "SIMULATION_CONTEXT_NOT_FOUND",
+            details: error.details
+          },
+          { status: 404 }
+        );
+      }
+
       return NextResponse.json(
         {
           error: "No fue posible obtener el contexto remoto del afiliado.",

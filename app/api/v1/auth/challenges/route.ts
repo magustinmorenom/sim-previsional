@@ -5,6 +5,8 @@ import {
   createRemoteAuthChallenge,
   RemoteApiError
 } from "@/lib/server/remote-api-client";
+import { isOtpBypassEmailAllowed, isOtpBypassMode } from "@/lib/server/otp-delivery";
+import { createBypassOtpChallenge } from "@/lib/server/otp-bypass-store";
 import { createChallengeState, setAuthChallengeCookie } from "@/lib/server/session";
 
 export const runtime = "nodejs";
@@ -50,12 +52,50 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const challenge = await createRemoteAuthChallenge(parsed.data);
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+
+    if (isOtpBypassMode()) {
+      if (!isOtpBypassEmailAllowed(normalizedEmail)) {
+        return NextResponse.json(
+          {
+            error: "El correo no está habilitado para el modo bypass del código de un solo uso.",
+            code: "OTP_BYPASS_EMAIL_NOT_ALLOWED"
+          },
+          { status: 403 }
+        );
+      }
+
+      const bypassChallenge = createBypassOtpChallenge({
+        email: normalizedEmail
+      });
+      const response = NextResponse.json(
+        {
+          challengeId: bypassChallenge.challengeId,
+          expiresInSeconds: bypassChallenge.expiresInSeconds,
+          resendAvailableInSeconds: bypassChallenge.resendAvailableInSeconds,
+          devMode: true,
+          devOtpCode: bypassChallenge.code
+        },
+        { status: 200 }
+      );
+
+      const challengeState = createChallengeState({
+        challengeId: bypassChallenge.challengeId,
+        email: normalizedEmail,
+        expiresInSeconds: bypassChallenge.expiresInSeconds
+      });
+      setAuthChallengeCookie(response, challengeState);
+      return response;
+    }
+
+    const challenge = await createRemoteAuthChallenge({
+      email: normalizedEmail
+    });
     const response = NextResponse.json(challenge, { status: 200 });
 
     const challengeState = createChallengeState({
       challengeId: challenge.challengeId,
-      email: parsed.data.email,
+      email: normalizedEmail,
       expiresInSeconds: challenge.expiresInSeconds
     });
     setAuthChallengeCookie(response, challengeState);

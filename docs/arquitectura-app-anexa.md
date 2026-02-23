@@ -66,6 +66,13 @@ Servicio: `lib/server/public-prestamos-client.ts`
 Variables opcionales:
 
 - `PRESTAMOS_API_BASE_URL`
-- `PRESTAMOS_API_KEY`
+- `API_KEY_CPS` (recomendada)
+- `PRESTAMOS_API_KEY` (legado, fallback)
 - `PRESTAMOS_API_TIMEOUT_MS`
 - `ENABLE_PRESTAMOS_SIMULATION` (`true` para habilitar `POST /simulate`)
+
+### OTP (pre-producción y producción)
+
+- `OTP_DELIVERY_MODE=live|bypass`
+- `OTP_BYPASS_ALLOWED_EMAILS` (CSV, opcional)
+- `OTP_BYPASS_ALLOW_IN_PROD` (`false` por defecto)
