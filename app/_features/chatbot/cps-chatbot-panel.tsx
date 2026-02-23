@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 type ChatRole = "user" | "assistant";
 
@@ -22,8 +23,6 @@ const INITIAL_MESSAGE: ChatMessage = {
   content: "Hola, soy IA CPS. Te ayudo con procesos, documentación y consultas frecuentes.",
   persist: false
 };
-
-const CHAT_STATE_STORAGE_KEY = "anx-cps-chat-state-v1";
 
 function buildMessage(role: ChatRole, content: string, persist = true): ChatMessage {
   return {
@@ -81,47 +80,6 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
     () => messages.filter((item) => item.persist).map((item) => ({ role: item.role, content: item.content })),
     [messages]
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const rawState = window.localStorage.getItem(CHAT_STATE_STORAGE_KEY);
-    if (!rawState) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(rawState) as ReadonlyArray<{ role: ChatRole; content: string }>;
-      if (!Array.isArray(parsed) || parsed.length === 0) {
-        return;
-      }
-
-      const restoredMessages = parsed
-        .filter((item) => (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
-        .map((item) => buildMessage(item.role, item.content, true));
-
-      if (restoredMessages.length > 0) {
-        setMessages([INITIAL_MESSAGE, ...restoredMessages]);
-      }
-    } catch {
-      // no-op
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (persistableMessages.length === 0) {
-      window.localStorage.removeItem(CHAT_STATE_STORAGE_KEY);
-      return;
-    }
-
-    window.localStorage.setItem(CHAT_STATE_STORAGE_KEY, JSON.stringify(persistableMessages.slice(-24)));
-  }, [persistableMessages]);
 
   useEffect(() => {
     if (firstRenderRef.current) {
@@ -193,7 +151,7 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
     }
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     void sendMessage(input);
   }
@@ -204,6 +162,9 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
     }
 
     requestAnimationFrame(() => {
+      if (hasSelectionInsideChat(viewportRef.current)) {
+        return;
+      }
       focusInput();
     });
   }
@@ -237,7 +198,9 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
             <small className="anx-chat-bubble-role">
               {message.role === "assistant" ? "IA CPS" : "Vos"}
             </small>
-            <p className="anx-chat-bubble-text">{message.content}</p>
+            <div className="anx-chat-bubble-text anx-chat-markdown">
+              {renderMarkdown(message.content)}
+            </div>
           </article>
         ))}
 
@@ -279,4 +242,200 @@ export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelPro
       </form>
     </article>
   );
+}
+
+function hasSelectionInsideChat(container: HTMLDivElement | null): boolean {
+  if (!container || typeof window === "undefined") {
+    return false;
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false;
+  }
+
+  const isInside = (node: Node | null): boolean => {
+    if (!node) {
+      return false;
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return Boolean(node.parentElement && container.contains(node.parentElement));
+    }
+
+    return container.contains(node);
+  };
+
+  return isInside(selection.anchorNode) || isInside(selection.focusNode);
+}
+
+type MarkdownBlock =
+  | { type: "paragraph"; lines: string[] }
+  | { type: "unordered-list"; items: string[] }
+  | { type: "ordered-list"; items: string[] };
+
+function renderMarkdown(content: string): ReactNode {
+  const blocks = parseMarkdownBlocks(content);
+
+  return blocks.map((block, blockIndex) => {
+    if (block.type === "paragraph") {
+      return (
+        <p key={`md-paragraph-${blockIndex}`}>
+          {renderInlineMarkdown(block.lines.join(" "))}
+        </p>
+      );
+    }
+
+    if (block.type === "unordered-list") {
+      return (
+        <ul key={`md-ul-${blockIndex}`}>
+          {block.items.map((item, itemIndex) => (
+            <li key={`md-ul-item-${blockIndex}-${itemIndex}`}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return (
+      <ol key={`md-ol-${blockIndex}`}>
+        {block.items.map((item, itemIndex) => (
+          <li key={`md-ol-item-${blockIndex}-${itemIndex}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ol>
+    );
+  });
+}
+
+function parseMarkdownBlocks(content: string): MarkdownBlock[] {
+  const lines = content.replace(/\r\n?/g, "\n").split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let paragraphLines: string[] = [];
+  let listType: "unordered-list" | "ordered-list" | null = null;
+  let listItems: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) {
+      return;
+    }
+
+    blocks.push({
+      type: "paragraph",
+      lines: paragraphLines
+    });
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listType || listItems.length === 0) {
+      return;
+    }
+
+    blocks.push({
+      type: listType,
+      items: listItems
+    });
+    listType = null;
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const unorderedMatch = /^[-*]\s+(.+)$/.exec(line);
+    if (unorderedMatch) {
+      flushParagraph();
+      if (listType !== "unordered-list") {
+        flushList();
+        listType = "unordered-list";
+      }
+      listItems.push(unorderedMatch[1]);
+      continue;
+    }
+
+    const orderedMatch = /^\d+\.\s+(.+)$/.exec(line);
+    if (orderedMatch) {
+      flushParagraph();
+      if (listType !== "ordered-list") {
+        flushList();
+        listType = "ordered-list";
+      }
+      listItems.push(orderedMatch[1]);
+      continue;
+    }
+
+    flushList();
+    paragraphLines.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks;
+}
+
+function renderInlineMarkdown(value: string): ReactNode {
+  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\(([^)\s]+)\))/g;
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let matchIndex = 0;
+
+  for (const match of value.matchAll(pattern)) {
+    const token = match[0];
+    const start = match.index ?? 0;
+
+    if (start > cursor) {
+      nodes.push(value.slice(cursor, start));
+    }
+
+    if (token.startsWith("**") && token.endsWith("**")) {
+      nodes.push(
+        <strong key={`md-strong-${matchIndex}`}>
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith("*") && token.endsWith("*")) {
+      nodes.push(
+        <em key={`md-em-${matchIndex}`}>
+          {token.slice(1, -1)}
+        </em>
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      nodes.push(
+        <code key={`md-code-${matchIndex}`}>
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else {
+      const linkMatch = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(token);
+      if (linkMatch) {
+        nodes.push(
+          <a
+            key={`md-link-${matchIndex}`}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {linkMatch[1]}
+          </a>
+        );
+      } else {
+        nodes.push(token);
+      }
+    }
+
+    cursor = start + token.length;
+    matchIndex += 1;
+  }
+
+  if (cursor < value.length) {
+    nodes.push(value.slice(cursor));
+  }
+
+  return nodes;
 }

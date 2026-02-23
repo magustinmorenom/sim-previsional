@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import Image from "next/image";
-import Link from "next/link";
 import { Breadcrumbs } from "@/app/_anexo/breadcrumbs";
 import { ContentTransition } from "@/app/_anexo/content-transition";
 import { NavigationLoadingOverlay } from "@/app/_anexo/navigation-loading-overlay";
@@ -22,7 +21,7 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
     <div className="anx-shell">
       <header className="anx-header">
         <div className="anx-brand">
-          <Link href="/app" className="anx-brand-link" aria-label="Inicio">
+          <a href="https://cajaceer.org.ar" className="anx-brand-link" aria-label="Ir al sitio de CPS">
             <Image
               src="/cps-logo.svg"
               alt="CPS"
@@ -31,7 +30,7 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
               priority
               className="anx-brand-logo"
             />
-          </Link>
+          </a>
         </div>
 
         <div className="anx-header-nav">
