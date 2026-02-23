@@ -1,8 +1,7 @@
 import type {
-  PrestamosCatalogoResponse,
+  PrestamosLineasResponse,
   PrestamosSimularRequest,
-  PrestamosSimularResponse,
-  PrestamosTasasResponse
+  PrestamosSimularResponse
 } from "@/lib/types/prestamos-public";
 
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -19,146 +18,6 @@ export class PrestamosPublicApiError extends Error {
     this.details = details;
   }
 }
-
-const fallbackCatalogo: PrestamosCatalogoResponse = {
-  success: true,
-  data: {
-    lineas: [
-      {
-        id: 1,
-        codigo: "LP001",
-        nombre: "Préstamos personales",
-        descripcion: "Préstamo para uso personal sin destino específico",
-        limites: {
-          montoMinimo: 0,
-          montoMaximo: 6450000,
-          maxCuotas: 48
-        },
-        amortizacion: {
-          sistema: "FRANCES",
-          descripcion: "Cuota fija mensual"
-        },
-        esConsumo: false,
-        plazosDisponibles: null,
-        costos: {
-          otorgamiento: {
-            gastosAdminPorcentaje: 1,
-            gastosAdminMinimo: 90,
-            selladoPorcentaje: 0.02,
-            fondoQuebrantoPorcentaje: 0
-          },
-          cuota: {
-            seguroVidaPorcentaje: 0.06,
-            seguroIncendioPorcentaje: 0,
-            gastosAdminFijo: 0
-          }
-        },
-        tasa: {
-          tipo: "FIJA",
-          tea: 18.5,
-          fechaVigencia: "2026-02-01"
-        }
-      },
-      {
-        id: 2,
-        codigo: "LP002",
-        nombre: "Préstamos de consumo",
-        descripcion: "Préstamo para bienes de consumo con tasas por plazo",
-        limites: {
-          montoMinimo: 0,
-          montoMaximo: 3000000,
-          maxCuotas: 48
-        },
-        amortizacion: {
-          sistema: "FRANCES",
-          descripcion: "Cuota fija mensual"
-        },
-        esConsumo: true,
-        plazosDisponibles: [6, 12, 24, 36, 48],
-        costos: {
-          otorgamiento: {
-            gastosAdminPorcentaje: 1,
-            gastosAdminMinimo: 90,
-            selladoPorcentaje: 0.02,
-            fondoQuebrantoPorcentaje: 0
-          },
-          cuota: {
-            seguroVidaPorcentaje: 0.06,
-            seguroIncendioPorcentaje: 0,
-            gastosAdminFijo: 0
-          }
-        },
-        tasa: {
-          tipo: "FIJA",
-          tea: 16.5,
-          nota: "La tasa varía según el plazo seleccionado.",
-          fechaVigencia: "2026-02-01"
-        }
-      },
-      {
-        id: 3,
-        codigo: "LP003",
-        nombre: "Préstamos hipotecarios",
-        descripcion: "Préstamo para adquisición o refacción de vivienda",
-        limites: {
-          montoMinimo: 100000,
-          montoMaximo: 50000000,
-          maxCuotas: 240
-        },
-        amortizacion: {
-          sistema: "ALEMAN",
-          descripcion: "Capital fijo, cuota decreciente"
-        },
-        esConsumo: false,
-        plazosDisponibles: null,
-        costos: {
-          otorgamiento: {
-            gastosAdminPorcentaje: 2,
-            gastosAdminMinimo: 500,
-            selladoPorcentaje: 0.05,
-            fondoQuebrantoPorcentaje: 1
-          },
-          cuota: {
-            seguroVidaPorcentaje: 0.1,
-            seguroIncendioPorcentaje: 0.15,
-            gastosAdminFijo: 100
-          }
-        },
-        tasa: {
-          tipo: "VARIABLE",
-          badlar: 14.5,
-          factor: 3.5,
-          tea: 18,
-          nota: "Tasa variable. Referencial.",
-          fechaVigencia: "2026-02-01"
-        }
-      }
-    ],
-    meta: {
-      generadoEn: "2026-02-20T10:30:00Z",
-      totalLineas: 3
-    }
-  }
-};
-
-const fallbackTasas: PrestamosTasasResponse = {
-  success: true,
-  data: {
-    tasaPublica: {
-      valor: 18.5,
-      descripcion: "Tasa Efectiva Anual de referencia para líneas de tasa fija",
-      fechaVigencia: "2026-02-01"
-    },
-    tasaVariable: {
-      badlar: 14.5,
-      factor: 3.5,
-      tea: 18,
-      descripcion: "BADLAR + factor para líneas de tasa variable",
-      fechaVigencia: "2026-02-01"
-    },
-    ultimaActualizacion: "2026-02-01T00:00:00Z"
-  }
-};
 
 function getTimeoutMs(): number {
   const raw = process.env.PRESTAMOS_API_TIMEOUT_MS;
@@ -183,50 +42,57 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object");
 }
 
-function ensureCatalogoResponse(payload: unknown): PrestamosCatalogoResponse {
-  if (!isRecord(payload) || payload.success !== true) {
-    throw new PrestamosPublicApiError(
-      502,
-      "PRESTAMOS_INVALID_PAYLOAD",
-      "El catálogo de préstamos no tiene el formato esperado."
-    );
+function ensureLineasResponse(payload: unknown): PrestamosLineasResponse {
+  if (Array.isArray(payload)) {
+    return payload as PrestamosLineasResponse;
   }
 
-  const data = payload.data;
-  if (!isRecord(data) || !Array.isArray(data.lineas) || !isRecord(data.meta)) {
-    throw new PrestamosPublicApiError(
-      502,
-      "PRESTAMOS_INVALID_PAYLOAD",
-      "El catálogo de préstamos no tiene el formato esperado."
-    );
+  if (isRecord(payload)) {
+    const data = payload.data;
+    if (Array.isArray(data)) {
+      return data as PrestamosLineasResponse;
+    }
+
+    if (isRecord(data) && Array.isArray(data.lineas)) {
+      return data.lineas as PrestamosLineasResponse;
+    }
+
+    if (Array.isArray(payload.lineas)) {
+      return payload.lineas as PrestamosLineasResponse;
+    }
   }
 
-  return payload as unknown as PrestamosCatalogoResponse;
+  throw new PrestamosPublicApiError(
+    502,
+    "PRESTAMOS_INVALID_PAYLOAD",
+    "La lista de líneas no tiene el formato esperado."
+  );
 }
 
-function ensureTasasResponse(payload: unknown): PrestamosTasasResponse {
-  if (!isRecord(payload) || payload.success !== true) {
-    throw new PrestamosPublicApiError(
-      502,
-      "PRESTAMOS_INVALID_PAYLOAD",
-      "La respuesta de tasas no tiene el formato esperado."
-    );
+function unwrapSimulacionPayload(payload: unknown): unknown {
+  if (!isRecord(payload)) {
+    return payload;
   }
 
-  const data = payload.data;
-  if (!isRecord(data) || !isRecord(data.tasaPublica) || !isRecord(data.tasaVariable)) {
-    throw new PrestamosPublicApiError(
-      502,
-      "PRESTAMOS_INVALID_PAYLOAD",
-      "La respuesta de tasas no tiene el formato esperado."
-    );
+  if (payload.success === true && isRecord(payload.data)) {
+    return payload.data;
   }
 
-  return payload as unknown as PrestamosTasasResponse;
+  if (isRecord(payload.data)) {
+    return payload.data;
+  }
+
+  if (isRecord(payload.result)) {
+    return payload.result;
+  }
+
+  return payload;
 }
 
 function ensureSimulacionResponse(payload: unknown): PrestamosSimularResponse {
-  if (!isRecord(payload) || payload.success !== true) {
+  const normalized = unwrapSimulacionPayload(payload);
+
+  if (!isRecord(normalized)) {
     throw new PrestamosPublicApiError(
       502,
       "PRESTAMOS_INVALID_PAYLOAD",
@@ -234,8 +100,9 @@ function ensureSimulacionResponse(payload: unknown): PrestamosSimularResponse {
     );
   }
 
-  const data = payload.data;
-  if (!isRecord(data) || !Array.isArray(data.cuadroDeMarcha) || !isRecord(data.resumen)) {
+  const { linea, tasa, costosIniciales, amortizacion } = normalized as Record<string, unknown>;
+
+  if (!isRecord(linea) || !isRecord(tasa) || !isRecord(costosIniciales) || !isRecord(amortizacion)) {
     throw new PrestamosPublicApiError(
       502,
       "PRESTAMOS_INVALID_PAYLOAD",
@@ -243,7 +110,15 @@ function ensureSimulacionResponse(payload: unknown): PrestamosSimularResponse {
     );
   }
 
-  return payload as unknown as PrestamosSimularResponse;
+  if (!Array.isArray(amortizacion.cuadroDeMarcha) || !isRecord(amortizacion.resumen)) {
+    throw new PrestamosPublicApiError(
+      502,
+      "PRESTAMOS_INVALID_PAYLOAD",
+      "La simulación no tiene el formato esperado."
+    );
+  }
+
+  return normalized as PrestamosSimularResponse;
 }
 
 function parseRemoteError(status: number, payload: unknown): PrestamosPublicApiError {
@@ -318,52 +193,19 @@ async function requestPrestamosApi(path: string, options?: { method?: "GET" | "P
   }
 }
 
-export async function getPrestamosCatalogo(): Promise<{ data: PrestamosCatalogoResponse; source: "remote" | "fallback" }> {
-  try {
-    const payload = await requestPrestamosApi("catalogo", {
-      method: "GET"
-    });
+export async function getPrestamosLineas(): Promise<{ data: PrestamosLineasResponse; source: "remote" }> {
+  const payload = await requestPrestamosApi("prestamos/lineas", {
+    method: "GET"
+  });
 
-    return {
-      data: ensureCatalogoResponse(payload),
-      source: "remote"
-    };
-  } catch (error) {
-    if (error instanceof PrestamosPublicApiError && error.code === "PRESTAMOS_BASE_URL_MISSING") {
-      return {
-        data: fallbackCatalogo,
-        source: "fallback"
-      };
-    }
-
-    throw error;
-  }
-}
-
-export async function getPrestamosTasas(): Promise<{ data: PrestamosTasasResponse; source: "remote" | "fallback" }> {
-  try {
-    const payload = await requestPrestamosApi("tasas", {
-      method: "GET"
-    });
-
-    return {
-      data: ensureTasasResponse(payload),
-      source: "remote"
-    };
-  } catch (error) {
-    if (error instanceof PrestamosPublicApiError && error.code === "PRESTAMOS_BASE_URL_MISSING") {
-      return {
-        data: fallbackTasas,
-        source: "fallback"
-      };
-    }
-
-    throw error;
-  }
+  return {
+    data: ensureLineasResponse(payload),
+    source: "remote"
+  };
 }
 
 export async function postPrestamosSimulacion(body: PrestamosSimularRequest): Promise<PrestamosSimularResponse> {
-  const payload = await requestPrestamosApi("simular", {
+  const payload = await requestPrestamosApi("prestamos/simulate", {
     method: "POST",
     body
   });

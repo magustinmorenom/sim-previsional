@@ -39,7 +39,6 @@ function isApiKeyAuthorized(req) {
 function apiKeyGuard(req, res, next) {
   if (!isApiKeyAuthorized(req)) {
     res.status(401).json({
-      success: false,
       error: {
         code: "UNAUTHORIZED",
         message: "API Key ausente o inválida"
@@ -51,15 +50,15 @@ function apiKeyGuard(req, res, next) {
   next();
 }
 
-function resolveCatalogoPayload() {
+function resolveLineasPayload() {
   const dbState = router.db.getState();
-  return dbState.catalogo;
+  return Array.isArray(dbState.lineas) ? dbState.lineas : [];
 }
 
 function mountSimulation(pathname) {
   server.post(pathname, apiKeyGuard, (req, res) => {
-    const catalogoPayload = resolveCatalogoPayload();
-    const result = simulatePrestamo(catalogoPayload, req.body || {});
+    const lineas = resolveLineasPayload();
+    const result = simulatePrestamo(lineas, req.body || {});
     res.status(result.status).json(result.body);
   });
 }
@@ -71,11 +70,12 @@ server.use(apiKeyGuard);
 
 server.use(
   jsonServer.rewriter({
-    [`${API_BASE}/catalogo`]: "/catalogo",
-    [`${API_BASE}/tasas`]: "/tasas"
+    [`${API_BASE}/lineas`]: "/lineas"
   })
 );
 
+mountSimulation("/simulate");
+mountSimulation(`${API_BASE}/simulate`);
 mountSimulation("/simular");
 mountSimulation(`${API_BASE}/simular`);
 

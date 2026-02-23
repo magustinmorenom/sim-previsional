@@ -15,7 +15,8 @@ export function buildScenarioCsv(snapshot: ScenarioSnapshot): string {
     "Sistema",
     "Total a pagar",
     "Total intereses",
-    "Total seguros y gastos"
+    "Costos iniciales",
+    "Monto neto"
   ];
 
   const summary = [
@@ -23,15 +24,15 @@ export function buildScenarioCsv(snapshot: ScenarioSnapshot): string {
     snapshot.linea.codigo,
     formatCurrency(snapshot.request.montoOtorgado),
     snapshot.request.cantidadCuotas,
-    snapshot.response.data.resumen.sistemaAmortizacion,
-    formatCurrency(snapshot.response.data.resumen.totalAPagar),
-    formatCurrency(snapshot.response.data.resumen.totalIntereses),
-    formatCurrency(snapshot.response.data.resumen.totalSegurosYGastos)
+    snapshot.response.amortizacion.sistemaAmortizacion,
+    formatCurrency(snapshot.response.amortizacion.resumen.totalAPagar),
+    formatCurrency(snapshot.response.amortizacion.resumen.totalIntereses),
+    formatCurrency(snapshot.response.costosIniciales.total),
+    formatCurrency(snapshot.response.costosIniciales.montoNeto)
   ];
 
-  const rows = snapshot.response.data.cuadroDeMarcha.map((item) => [
-    item.nroCuota,
-    item.fechaVencimientoEstimada,
+  const rows = snapshot.response.amortizacion.cuadroDeMarcha.map((item) => [
+    item.numeroCuota,
     item.capitalPendiente,
     item.amortizacion,
     item.intereses,
@@ -45,7 +46,6 @@ export function buildScenarioCsv(snapshot: ScenarioSnapshot): string {
     "",
     [
       "Nro cuota",
-      "Vencimiento",
       "Capital pendiente",
       "Amortización",
       "Intereses",
@@ -74,12 +74,11 @@ export function openPrintableScenario(snapshot: ScenarioSnapshot): void {
     return;
   }
 
-  const rows = snapshot.response.data.cuadroDeMarcha
+  const rows = snapshot.response.amortizacion.cuadroDeMarcha
     .map(
       (item) => `
         <tr>
-          <td>${item.nroCuota}</td>
-          <td>${item.fechaVencimientoEstimada}</td>
+          <td>${item.numeroCuota}</td>
           <td>${formatCurrency(item.capitalPendiente)}</td>
           <td>${formatCurrency(item.amortizacion)}</td>
           <td>${formatCurrency(item.intereses)}</td>
@@ -108,14 +107,14 @@ export function openPrintableScenario(snapshot: ScenarioSnapshot): void {
         <p><strong>Línea:</strong> ${snapshot.linea.nombre} (${snapshot.linea.codigo})</p>
         <p><strong>Monto:</strong> ${formatCurrency(snapshot.request.montoOtorgado)} - <strong>Cuotas:</strong> ${snapshot.request.cantidadCuotas}</p>
         <p><strong>Fecha:</strong> ${formatIsoDate(snapshot.createdAtIso)}</p>
-        <p><strong>Total a pagar:</strong> ${formatCurrency(snapshot.response.data.resumen.totalAPagar)}</p>
-        <p><strong>Total intereses:</strong> ${formatCurrency(snapshot.response.data.resumen.totalIntereses)}</p>
+        <p><strong>Total a pagar:</strong> ${formatCurrency(snapshot.response.amortizacion.resumen.totalAPagar)}</p>
+        <p><strong>Total intereses:</strong> ${formatCurrency(snapshot.response.amortizacion.resumen.totalIntereses)}</p>
+        <p><strong>Costos iniciales:</strong> ${formatCurrency(snapshot.response.costosIniciales.total)}</p>
 
         <table>
           <thead>
             <tr>
               <th>Nro cuota</th>
-              <th>Vencimiento</th>
               <th>Capital pendiente</th>
               <th>Amortización</th>
               <th>Intereses</th>

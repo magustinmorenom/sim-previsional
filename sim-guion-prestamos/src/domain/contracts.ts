@@ -1,20 +1,9 @@
 import type {
   PrestamoCuadroDeMarchaItem,
   PrestamoLinea,
-  PrestamosCatalogoApiResponse,
   PrestamosSimularRequest,
-  PrestamosSimularResponse,
-  PrestamosTasasApiResponse
+  PrestamosSimularResponse
 } from "@/lib/types/prestamos-public";
-
-export type ApiSource = "remote" | "fallback" | "unknown";
-
-export interface PrestamosBootstrapState {
-  catalogo: PrestamosCatalogoApiResponse;
-  tasas: PrestamosTasasApiResponse;
-  catalogoSource: ApiSource;
-  tasasSource: ApiSource;
-}
 
 export interface PrestamosFormState {
   lineaPrestamoId: number;
@@ -46,7 +35,7 @@ export interface ChartPoint {
 
 export function toChartPoints(cuadro: PrestamoCuadroDeMarchaItem[]): ChartPoint[] {
   return cuadro.map((item) => ({
-    nroCuota: item.nroCuota,
+    nroCuota: item.numeroCuota,
     cuota: item.cuota,
     intereses: item.intereses,
     amortizacion: item.amortizacion,

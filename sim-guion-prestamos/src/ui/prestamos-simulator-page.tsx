@@ -16,7 +16,6 @@ import { usePrestamosSimulator } from "@/sim-guion-prestamos/src/ui/use-prestamo
 
 export default function PrestamosSimulatorPage(): JSX.Element {
   const {
-    bootstrap,
     loadingBootstrap,
     bootstrapError,
     lineas,
@@ -38,8 +37,8 @@ export default function PrestamosSimulatorPage(): JSX.Element {
   } = usePrestamosSimulator();
 
   const chartPoints = useMemo(
-    () => toChartPoints(simulation?.data.cuadroDeMarcha ?? []).slice(0, 24),
-    [simulation?.data.cuadroDeMarcha]
+    () => toChartPoints(simulation?.amortizacion.cuadroDeMarcha ?? []).slice(0, 24),
+    [simulation?.amortizacion.cuadroDeMarcha]
   );
 
   const maxChartValue = useMemo(
@@ -59,14 +58,13 @@ export default function PrestamosSimulatorPage(): JSX.Element {
       request: {
         lineaPrestamoId: selectedLinea.id,
         montoOtorgado: Number(form.montoOtorgado),
-        cantidadCuotas: Number(form.cantidadCuotas)
+        cantidadCuotas: Number(form.cantidadCuotas),
+        sistemaAmortizacion: selectedLinea.sistemaAmortizacion
       },
       response: simulation,
       createdAtIso: new Date().toISOString()
     };
   }, [selectedLinea, simulation, form.cantidadCuotas, form.montoOtorgado]);
-
-  const cuotasConsumo = selectedLinea?.esConsumo ? selectedLinea.plazosDisponibles ?? [] : [];
 
   return (
     <section className={styles.root}>
@@ -78,7 +76,7 @@ export default function PrestamosSimulatorPage(): JSX.Element {
         </p>
       </article>
 
-      {loadingBootstrap && <p className="anx-status">Cargando catálogo y tasas de préstamos...</p>}
+      {loadingBootstrap && <p className="anx-status">Cargando catálogo de préstamos...</p>}
       {bootstrapError && <p className="anx-status anx-status-error">{bootstrapError}</p>}
 
       {!loadingBootstrap && !bootstrapError && (
@@ -102,18 +100,15 @@ export default function PrestamosSimulatorPage(): JSX.Element {
                       <strong>
                         {linea.nombre} <small>({linea.codigo})</small>
                       </strong>
-                      <p>{linea.descripcion}</p>
+                      <p>{linea.descripcion ?? "Sin descripción disponible."}</p>
 
                       <div className={styles.badgeRow}>
-                        <span className={styles.badge}>{linea.amortizacion.sistema}</span>
-                        <span className={styles.badge}>Máx. {linea.limites.maxCuotas} cuotas</span>
-                        <span className={styles.badge}>{formatPercent(linea.tasa.tea)} TEA</span>
-                        {linea.tasa.tipo === "VARIABLE" && (
-                          <span className={`${styles.badge} ${styles.badgeWarn}`}>Cuota variable</span>
-                        )}
+                        <span className={styles.badge}>{linea.sistemaAmortizacion}</span>
+                        <span className={styles.badge}>Máx. {linea.maxCuotas} cuotas</span>
+                        <span className={styles.badge}>v{linea.version}</span>
                       </div>
                       <small>
-                        Monto: {formatCurrency(linea.limites.montoMinimo)} a {formatCurrency(linea.limites.montoMaximo)}
+                        Monto: {formatCurrency(linea.montoMinimo)} a {formatCurrency(linea.montoMaximo)}
                       </small>
                     </button>
                   );
@@ -121,18 +116,17 @@ export default function PrestamosSimulatorPage(): JSX.Element {
               </div>
             </article>
 
-            {bootstrap?.tasas?.data && (
-              <article className="anx-panel anx-rate-card">
-                <h2>Tasas vigentes</h2>
+            <article className="anx-panel anx-rate-card">
+              <h2>Datos de tasa</h2>
+              {simulation ? (
                 <p>
-                  Pública: <strong>{formatPercent(bootstrap.tasas.data.tasaPublica.valor)}</strong> ·
-                  Variable: <strong>{formatPercent(bootstrap.tasas.data.tasaVariable.badlar)} + {bootstrap.tasas.data.tasaVariable.factor}</strong>
+                  TEA: <strong>{formatPercent(simulation.tasa.tea)}</strong> · Vigencia:{" "}
+                  <strong>{formatIsoDate(simulation.tasa.fechaVigencia)}</strong>
                 </p>
-                <small>
-                  Vigencia: {formatIsoDate(bootstrap.tasas.data.ultimaActualizacion)}
-                </small>
-              </article>
-            )}
+              ) : (
+                <p>Simulá una línea para ver la tasa aplicada.</p>
+              )}
+            </article>
           </aside>
 
           <main className={styles.mainStack}>
@@ -164,34 +158,17 @@ export default function PrestamosSimulatorPage(): JSX.Element {
                   {validation.montoOtorgado && <p className={styles.fieldError}>{validation.montoOtorgado}</p>}
                 </label>
 
-                {selectedLinea?.esConsumo ? (
-                  <label>
-                    Cantidad de cuotas (plazos fijos)
-                    <select
-                      value={form.cantidadCuotas}
-                      onChange={(event) => updateCuotas(event.target.value)}
-                    >
-                      {cuotasConsumo.map((cuota) => (
-                        <option key={cuota} value={cuota}>
-                          {cuota} cuotas
-                        </option>
-                      ))}
-                    </select>
-                    {validation.cantidadCuotas && <p className={styles.fieldError}>{validation.cantidadCuotas}</p>}
-                  </label>
-                ) : (
-                  <label>
-                    Cantidad de cuotas
-                    <input
-                      type="number"
-                      min={1}
-                      max={selectedLinea?.limites.maxCuotas ?? 1}
-                      value={form.cantidadCuotas}
-                      onChange={(event) => updateCuotas(event.target.value)}
-                    />
-                    {validation.cantidadCuotas && <p className={styles.fieldError}>{validation.cantidadCuotas}</p>}
-                  </label>
-                )}
+                <label>
+                  Cantidad de cuotas
+                  <input
+                    type="number"
+                    min={1}
+                    max={selectedLinea?.maxCuotas ?? 1}
+                    value={form.cantidadCuotas}
+                    onChange={(event) => updateCuotas(event.target.value)}
+                  />
+                  {validation.cantidadCuotas && <p className={styles.fieldError}>{validation.cantidadCuotas}</p>}
+                </label>
 
                 <div className={styles.quickActions}>
                   {[300000, 500000, 1000000, 2500000].map((amount) => (
@@ -229,25 +206,28 @@ export default function PrestamosSimulatorPage(): JSX.Element {
                 <article className="anx-panel">
                   <h2>Resultado de simulación</h2>
                   <p className="anx-results-count">
-                    Línea {simulation.data.linea.nombre} · {simulation.data.resumen.cantidadCuotas} cuotas · {simulation.data.resumen.sistemaAmortizacion}
+                    Línea {simulation.linea.nombre} · {simulation.amortizacion.resumen.cantidadCuotas} cuotas · {simulation.amortizacion.sistemaAmortizacion}
                   </p>
+                  <small>
+                    TEA {formatPercent(simulation.tasa.tea)} · Vigencia {formatIsoDate(simulation.tasa.fechaVigencia)} · Cuota fija {formatCurrency(simulation.amortizacion.resumen.cuotaFija)}
+                  </small>
 
                   <div className={styles.kpiGrid}>
                     <div className={`${styles.kpi} ${styles.kpiPrimary}`}>
                       <span>Total a pagar</span>
-                      <strong>{formatCurrency(simulation.data.resumen.totalAPagar)}</strong>
+                      <strong>{formatCurrency(simulation.amortizacion.resumen.totalAPagar)}</strong>
                     </div>
                     <div className={styles.kpi}>
                       <span>Intereses</span>
-                      <strong>{formatCurrency(simulation.data.resumen.totalIntereses)}</strong>
+                      <strong>{formatCurrency(simulation.amortizacion.resumen.totalIntereses)}</strong>
                     </div>
                     <div className={styles.kpi}>
-                      <span>Monto acreditado</span>
-                      <strong>{formatCurrency(simulation.data.costosIniciales.montoAcreditado)}</strong>
+                      <span>Monto neto</span>
+                      <strong>{formatCurrency(simulation.costosIniciales.montoNeto)}</strong>
                     </div>
                     <div className={styles.kpi}>
-                      <span>Descuentos iniciales</span>
-                      <strong>{formatCurrency(simulation.data.costosIniciales.totalDescuentos)}</strong>
+                      <span>Costos iniciales</span>
+                      <strong>{formatCurrency(simulation.costosIniciales.total)}</strong>
                     </div>
                   </div>
 
@@ -317,7 +297,6 @@ export default function PrestamosSimulatorPage(): JSX.Element {
                       <thead>
                         <tr>
                           <th>Cuota</th>
-                          <th>Vencimiento</th>
                           <th>Capital pendiente</th>
                           <th>Amortización</th>
                           <th>Intereses</th>
@@ -326,10 +305,9 @@ export default function PrestamosSimulatorPage(): JSX.Element {
                         </tr>
                       </thead>
                       <tbody>
-                        {simulation.data.cuadroDeMarcha.map((item) => (
-                          <tr key={item.nroCuota}>
-                            <td>{item.nroCuota}</td>
-                            <td>{item.fechaVencimientoEstimada}</td>
+                        {simulation.amortizacion.cuadroDeMarcha.map((item) => (
+                          <tr key={item.numeroCuota}>
+                            <td>{item.numeroCuota}</td>
                             <td>{formatCurrency(item.capitalPendiente)}</td>
                             <td>{formatCurrency(item.amortizacion)}</td>
                             <td>{formatCurrency(item.intereses)}</td>
@@ -368,8 +346,8 @@ export default function PrestamosSimulatorPage(): JSX.Element {
 
                     <div className={styles.compareMeta}>
                       <span>Monto: {formatCurrency(scenario.request.montoOtorgado)}</span>
-                      <span>Total: {formatCurrency(scenario.response.data.resumen.totalAPagar)}</span>
-                      <span>Intereses: {formatCurrency(scenario.response.data.resumen.totalIntereses)}</span>
+                      <span>Total: {formatCurrency(scenario.response.amortizacion.resumen.totalAPagar)}</span>
+                      <span>Intereses: {formatCurrency(scenario.response.amortizacion.resumen.totalIntereses)}</span>
                       <span>Cuotas: {scenario.request.cantidadCuotas}</span>
                     </div>
 

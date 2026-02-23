@@ -12,7 +12,8 @@ export const runtime = "nodejs";
 const simulationRequestSchema = z.object({
   lineaPrestamoId: z.number().int().positive(),
   montoOtorgado: z.number().positive(),
-  cantidadCuotas: z.number().int().positive()
+  cantidadCuotas: z.number().int().positive(),
+  sistemaAmortizacion: z.enum(["FRANCES", "ALEMAN"]).optional()
 });
 
 export async function POST(request: Request): Promise<NextResponse> {

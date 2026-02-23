@@ -2,31 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type {
-  ApiSource,
-  PrestamosBootstrapState,
   PrestamosFormState,
   PrestamosFormValidation,
   ScenarioSnapshot
 } from "@/sim-guion-prestamos/src/domain/contracts";
 import type {
   PrestamoLinea,
-  PrestamosCatalogoApiResponse,
   PrestamosSimularRequest,
-  PrestamosSimularResponse,
-  PrestamosTasasApiResponse
+  PrestamosSimularResponse
 } from "@/lib/types/prestamos-public";
 import { parseLocaleNumber } from "@/sim-guion-prestamos/src/domain/formatters";
 
 const DEFAULT_MONTO_SUGERIDO = 500000;
 const MAX_SCENARIOS = 3;
-
-function asApiSource(value: unknown): ApiSource {
-  if (value === "remote" || value === "fallback") {
-    return value;
-  }
-
-  return "unknown";
-}
 
 function readApiMessage(payload: unknown, fallback: string): string {
   if (payload && typeof payload === "object" && "error" in payload) {
@@ -55,10 +43,8 @@ function buildInitialForm(linea: PrestamoLinea | null): PrestamosFormState {
     };
   }
 
-  const montoBase = Math.max(linea.limites.montoMinimo, DEFAULT_MONTO_SUGERIDO);
-  const cuotasBase = Array.isArray(linea.plazosDisponibles) && linea.plazosDisponibles.length > 0
-    ? linea.plazosDisponibles[0]
-    : Math.min(12, linea.limites.maxCuotas);
+  const montoBase = Math.max(linea.montoMinimo, DEFAULT_MONTO_SUGERIDO);
+  const cuotasBase = Math.min(12, linea.maxCuotas);
 
   return {
     lineaPrestamoId: linea.id,
@@ -78,24 +64,33 @@ function validateForm(form: PrestamosFormState, selectedLinea: PrestamoLinea | n
   const monto = parseLocaleNumber(form.montoOtorgado);
   if (!Number.isFinite(monto)) {
     errors.montoOtorgado = "Ingresá un monto válido.";
-  } else if (monto < selectedLinea.limites.montoMinimo || monto > selectedLinea.limites.montoMaximo) {
-    errors.montoOtorgado = `El monto debe estar entre ${selectedLinea.limites.montoMinimo} y ${selectedLinea.limites.montoMaximo}.`;
+  } else if (monto < selectedLinea.montoMinimo || monto > selectedLinea.montoMaximo) {
+    errors.montoOtorgado = `El monto debe estar entre ${selectedLinea.montoMinimo} y ${selectedLinea.montoMaximo}.`;
   }
 
   const cuotas = Number(form.cantidadCuotas);
   if (!Number.isFinite(cuotas)) {
     errors.cantidadCuotas = "Ingresá una cantidad de cuotas válida.";
-  } else if (cuotas < 1 || cuotas > selectedLinea.limites.maxCuotas) {
-    errors.cantidadCuotas = `La línea permite entre 1 y ${selectedLinea.limites.maxCuotas} cuotas.`;
-  } else if (
-    selectedLinea.esConsumo &&
-    Array.isArray(selectedLinea.plazosDisponibles) &&
-    !selectedLinea.plazosDisponibles.includes(cuotas)
-  ) {
-    errors.cantidadCuotas = `Para esta línea solo están disponibles: ${selectedLinea.plazosDisponibles.join(", ")}.`;
+  } else if (cuotas < 1 || cuotas > selectedLinea.maxCuotas) {
+    errors.cantidadCuotas = `La línea permite entre 1 y ${selectedLinea.maxCuotas} cuotas.`;
   }
 
   return errors;
+}
+
+function normalizeLineas(payload: unknown): PrestamoLinea[] | null {
+  if (Array.isArray(payload)) {
+    return payload as PrestamoLinea[];
+  }
+
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const data = (payload as { data?: unknown }).data;
+    if (Array.isArray(data)) {
+      return data as PrestamoLinea[];
+    }
+  }
+
+  return null;
 }
 
 function normalizeSimulation(payload: unknown): PrestamosSimularResponse | null {
@@ -103,8 +98,19 @@ function normalizeSimulation(payload: unknown): PrestamosSimularResponse | null 
     return null;
   }
 
-  const maybeSuccess = payload as { success?: boolean; data?: unknown };
-  if (!maybeSuccess.success || !maybeSuccess.data || typeof maybeSuccess.data !== "object") {
+  const maybe = payload as {
+    linea?: unknown;
+    tasa?: unknown;
+    costosIniciales?: unknown;
+    amortizacion?: unknown;
+  };
+
+  if (!maybe.linea || !maybe.tasa || !maybe.costosIniciales || !maybe.amortizacion) {
+    return null;
+  }
+
+  const amortizacion = maybe.amortizacion as { resumen?: unknown; cuadroDeMarcha?: unknown };
+  if (!amortizacion.resumen || !Array.isArray(amortizacion.cuadroDeMarcha)) {
     return null;
   }
 
@@ -112,7 +118,7 @@ function normalizeSimulation(payload: unknown): PrestamosSimularResponse | null 
 }
 
 export function usePrestamosSimulator() {
-  const [bootstrap, setBootstrap] = useState<PrestamosBootstrapState | null>(null);
+  const [lineas, setLineas] = useState<PrestamoLinea[]>([]);
   const [loadingBootstrap, setLoadingBootstrap] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
@@ -134,32 +140,21 @@ export function usePrestamosSimulator() {
       setBootstrapError(null);
 
       try {
-        const [catalogoResponse, tasasResponse] = await Promise.all([
-          fetch("/api/v1/public/prestamos/catalogo", { method: "GET" }),
-          fetch("/api/v1/public/prestamos/tasas", { method: "GET" })
-        ]);
+        const response = await fetch("/api/v1/public/prestamos/lineas", { method: "GET" });
+        const payload = await response.json();
 
-        const catalogoPayload = (await catalogoResponse.json()) as PrestamosCatalogoApiResponse;
-        const tasasPayload = (await tasasResponse.json()) as PrestamosTasasApiResponse;
-
-        if (!catalogoResponse.ok || !catalogoPayload.success) {
-          throw new Error(readApiMessage(catalogoPayload, "No fue posible cargar catálogo de préstamos."));
+        if (!response.ok) {
+          throw new Error(readApiMessage(payload, "No fue posible cargar líneas de préstamos."));
         }
 
-        if (!tasasResponse.ok || !tasasPayload.success) {
-          throw new Error(readApiMessage(tasasPayload, "No fue posible cargar tasas de préstamos."));
+        const normalized = normalizeLineas(payload);
+        if (!normalized) {
+          throw new Error("La API devolvió una lista de líneas inválida.");
         }
 
-        const nextBootstrap: PrestamosBootstrapState = {
-          catalogo: catalogoPayload,
-          tasas: tasasPayload,
-          catalogoSource: asApiSource(catalogoPayload.source),
-          tasasSource: asApiSource(tasasPayload.source)
-        };
+        setLineas(normalized);
 
-        setBootstrap(nextBootstrap);
-
-        const firstLinea = catalogoPayload.data.lineas[0] ?? null;
+        const firstLinea = normalized[0] ?? null;
         setForm(buildInitialForm(firstLinea));
       } catch (error) {
         const message = error instanceof Error ? error.message : "No fue posible cargar simulador de préstamos.";
@@ -169,8 +164,6 @@ export function usePrestamosSimulator() {
       }
     })();
   }, []);
-
-  const lineas = bootstrap?.catalogo.data.lineas ?? [];
 
   const selectedLinea = useMemo(() => {
     if (lineas.length === 0) {
@@ -242,13 +235,14 @@ export function usePrestamosSimulator() {
     const request: PrestamosSimularRequest = {
       lineaPrestamoId: selectedLinea.id,
       montoOtorgado: parseLocaleNumber(form.montoOtorgado),
-      cantidadCuotas: Number(form.cantidadCuotas)
+      cantidadCuotas: Number(form.cantidadCuotas),
+      sistemaAmortizacion: selectedLinea.sistemaAmortizacion
     };
 
     setSimulating(true);
 
     try {
-      const response = await fetch("/api/v1/public/prestamos/simular", {
+      const response = await fetch("/api/v1/public/prestamos/simulate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -290,7 +284,8 @@ export function usePrestamosSimulator() {
     const request: PrestamosSimularRequest = {
       lineaPrestamoId: selectedLinea.id,
       montoOtorgado: parseLocaleNumber(form.montoOtorgado),
-      cantidadCuotas: Number(form.cantidadCuotas)
+      cantidadCuotas: Number(form.cantidadCuotas),
+      sistemaAmortizacion: selectedLinea.sistemaAmortizacion
     };
 
     const snapshot: ScenarioSnapshot = {
@@ -310,7 +305,6 @@ export function usePrestamosSimulator() {
   }
 
   return {
-    bootstrap,
     loadingBootstrap,
     bootstrapError,
     lineas,

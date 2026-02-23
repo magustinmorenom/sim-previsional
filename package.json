@@ -5,7 +5,7 @@
   "scripts": {
     "clean:next": "rm -rf .next tsconfig.tsbuildinfo",
     "dev": "next dev",
-    "dev:prestamos": "PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/prestamos/ PRESTAMOS_API_KEY= ENABLE_PRESTAMOS_SIMULATION=true ENABLE_PRESTAMOS_UI_V2=true npm run dev",
+    "dev:prestamos": "PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/ PRESTAMOS_API_KEY= ENABLE_PRESTAMOS_SIMULATION=true ENABLE_PRESTAMOS_UI_V2=true npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

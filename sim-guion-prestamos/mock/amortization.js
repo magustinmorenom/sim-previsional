@@ -1,4 +1,18 @@
-const DATE_LOCALE = "es-AR";
+const DEFAULT_TEA = 18.5;
+const DEFAULT_TASA_VIGENCIA = "2026-02-01";
+
+const TEA_BY_CODIGO = {
+  LP001: 18.5,
+  LP002: 16.5,
+  LP003: 18
+};
+
+const COSTOS_CONFIG = {
+  gastosAdminPorcentaje: 1,
+  gastosAdminMinimo: 90,
+  selladoPorcentaje: 0.02,
+  fondoQuebrantoPorcentaje: 0
+};
 
 function round(value, decimals = 2) {
   const factor = 10 ** decimals;
@@ -10,53 +24,34 @@ function asNumber(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function resolveTea(linea, cuotas) {
-  if (!linea.esConsumo || !Array.isArray(linea.plazosDisponibles)) {
-    return linea.tasa.tea;
+function resolveTea(linea) {
+  if (linea && linea.codigo && TEA_BY_CODIGO[linea.codigo]) {
+    return TEA_BY_CODIGO[linea.codigo];
   }
 
-  const teaByCuotas = {
-    6: 14,
-    12: 16.5,
-    24: 18,
-    36: 19,
-    48: 20
-  };
-
-  const overrideTea = teaByCuotas[cuotas];
-  if (typeof overrideTea === "number") {
-    return overrideTea;
-  }
-
-  return linea.tasa.tea;
+  return DEFAULT_TEA;
 }
 
-function computeInitialCosts(linea, montoOtorgado) {
-  const otorgamiento = linea.costos.otorgamiento;
-
-  const gastosAdminRaw = montoOtorgado * (otorgamiento.gastosAdminPorcentaje / 100);
-  const gastosAdmin = Math.max(gastosAdminRaw, otorgamiento.gastosAdminMinimo);
-  const sellado = montoOtorgado * (otorgamiento.selladoPorcentaje / 100);
-  const fondoQuebranto = montoOtorgado * (otorgamiento.fondoQuebrantoPorcentaje / 100);
-
-  const totalDescuentos = gastosAdmin + sellado + fondoQuebranto;
+function computeInitialCosts(montoOtorgado) {
+  const gastosAdminRaw = montoOtorgado * (COSTOS_CONFIG.gastosAdminPorcentaje / 100);
+  const gastosAdmin = Math.max(gastosAdminRaw, COSTOS_CONFIG.gastosAdminMinimo);
+  const sellado = montoOtorgado * (COSTOS_CONFIG.selladoPorcentaje / 100);
+  const fondoQuebranto = montoOtorgado * (COSTOS_CONFIG.fondoQuebrantoPorcentaje / 100);
+  const total = gastosAdmin + sellado + fondoQuebranto;
 
   return {
-    montoSolicitado: round(montoOtorgado),
     gastosAdmin: round(gastosAdmin),
     sellado: round(sellado),
     fondoQuebranto: round(fondoQuebranto),
-    totalDescuentos: round(totalDescuentos),
-    montoAcreditado: round(montoOtorgado - totalDescuentos)
+    total: round(total),
+    montoNeto: round(montoOtorgado - total)
   };
 }
 
 function computeFrenchSchedule({
   montoOtorgado,
   cantidadCuotas,
-  monthlyRate,
-  extraPerInstallment,
-  startDate
+  monthlyRate
 }) {
   const baseInstallment =
     monthlyRate === 0
@@ -65,24 +60,21 @@ function computeFrenchSchedule({
 
   let balance = montoOtorgado;
   let totalIntereses = 0;
-  let totalSegurosYGastos = 0;
   let totalAPagar = 0;
 
   const cuadro = [];
 
-  for (let nroCuota = 1; nroCuota <= cantidadCuotas; nroCuota += 1) {
+  for (let numeroCuota = 1; numeroCuota <= cantidadCuotas; numeroCuota += 1) {
     const intereses = balance * monthlyRate;
     const amortizacion = baseInstallment - intereses;
-    const cuota = baseInstallment + extraPerInstallment;
+    const cuota = baseInstallment;
     const capitalRestante = Math.max(0, balance - amortizacion);
 
     totalIntereses += intereses;
-    totalSegurosYGastos += extraPerInstallment;
     totalAPagar += cuota;
 
     cuadro.push({
-      nroCuota,
-      fechaVencimientoEstimada: formatInstallmentDate(startDate, nroCuota),
+      numeroCuota,
       capitalPendiente: round(balance),
       amortizacion: round(amortizacion),
       intereses: round(intereses),
@@ -96,9 +88,8 @@ function computeFrenchSchedule({
   return {
     cuadro,
     resumen: {
-      cuotaFija: round(baseInstallment + extraPerInstallment),
+      cuotaFija: round(baseInstallment),
       totalIntereses: round(totalIntereses),
-      totalSegurosYGastos: round(totalSegurosYGastos),
       totalAPagar: round(totalAPagar)
     }
   };
@@ -107,32 +98,26 @@ function computeFrenchSchedule({
 function computeGermanSchedule({
   montoOtorgado,
   cantidadCuotas,
-  monthlyRate,
-  extraPerInstallment,
-  startDate
+  monthlyRate
 }) {
   const amortizacionConstante = montoOtorgado / cantidadCuotas;
 
   let balance = montoOtorgado;
   let totalIntereses = 0;
-  let totalSegurosYGastos = 0;
   let totalAPagar = 0;
 
   const cuadro = [];
 
-  for (let nroCuota = 1; nroCuota <= cantidadCuotas; nroCuota += 1) {
+  for (let numeroCuota = 1; numeroCuota <= cantidadCuotas; numeroCuota += 1) {
     const intereses = balance * monthlyRate;
-    const cuotaBase = amortizacionConstante + intereses;
-    const cuota = cuotaBase + extraPerInstallment;
+    const cuota = amortizacionConstante + intereses;
     const capitalRestante = Math.max(0, balance - amortizacionConstante);
 
     totalIntereses += intereses;
-    totalSegurosYGastos += extraPerInstallment;
     totalAPagar += cuota;
 
     cuadro.push({
-      nroCuota,
-      fechaVencimientoEstimada: formatInstallmentDate(startDate, nroCuota),
+      numeroCuota,
       capitalPendiente: round(balance),
       amortizacion: round(amortizacionConstante),
       intereses: round(intereses),
@@ -143,34 +128,26 @@ function computeGermanSchedule({
     balance = capitalRestante;
   }
 
-  const cuotaInicial = cuadro[0] ? cuadro[0].cuota : 0;
-  const cuotaFinal = cuadro[cuadro.length - 1] ? cuadro[cuadro.length - 1].cuota : 0;
-  const cuotaPromedio = cuadro.length > 0
-    ? cuadro.reduce((acc, item) => acc + item.cuota, 0) / cuadro.length
-    : 0;
+  const cuotaFija = cuadro[0] ? cuadro[0].cuota : 0;
 
   return {
     cuadro,
     resumen: {
-      cuotaInicial: round(cuotaInicial),
-      cuotaFinal: round(cuotaFinal),
-      cuotaPromedio: round(cuotaPromedio),
+      cuotaFija: round(cuotaFija),
       totalIntereses: round(totalIntereses),
-      totalSegurosYGastos: round(totalSegurosYGastos),
       totalAPagar: round(totalAPagar)
     }
   };
 }
 
-function formatInstallmentDate(startDate, installmentNumber) {
-  const date = new Date(startDate);
-  date.setMonth(date.getMonth() + installmentNumber);
+function resolveAmortizationSystem(linea, payload) {
+  if (linea && linea.sistemaAmortizacion) {
+    return linea.sistemaAmortizacion;
+  }
 
-  return new Intl.DateTimeFormat(DATE_LOCALE, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(date);
+  return payload && typeof payload.sistemaAmortizacion === "string"
+    ? payload.sistemaAmortizacion
+    : "FRANCES";
 }
 
 function validateRequest(linea, payload) {
@@ -182,7 +159,6 @@ function validateRequest(linea, payload) {
       ok: false,
       status: 400,
       body: {
-        success: false,
         error: {
           code: "VALIDATION_ERROR",
           message: "Configuración inválida: monto y cuotas deben ser numéricos."
@@ -191,47 +167,27 @@ function validateRequest(linea, payload) {
     };
   }
 
-  if (montoOtorgado < linea.limites.montoMinimo || montoOtorgado > linea.limites.montoMaximo) {
+  if (montoOtorgado < linea.montoMinimo || montoOtorgado > linea.montoMaximo) {
     return {
       ok: false,
       status: 400,
       body: {
-        success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: `Configuración inválida: Monto permitido entre ${linea.limites.montoMinimo} y ${linea.limites.montoMaximo}.`
+          message: `Configuración inválida: Monto permitido entre ${linea.montoMinimo} y ${linea.montoMaximo}.`
         }
       }
     };
   }
 
-  if (cantidadCuotas < 1 || cantidadCuotas > linea.limites.maxCuotas) {
+  if (cantidadCuotas < 1 || cantidadCuotas > linea.maxCuotas) {
     return {
       ok: false,
       status: 400,
       body: {
-        success: false,
         error: {
           code: "VALIDATION_ERROR",
-          message: `Configuración inválida: Máximo ${linea.limites.maxCuotas} cuotas para la línea seleccionada.`
-        }
-      }
-    };
-  }
-
-  if (
-    linea.esConsumo &&
-    Array.isArray(linea.plazosDisponibles) &&
-    !linea.plazosDisponibles.includes(cantidadCuotas)
-  ) {
-    return {
-      ok: false,
-      status: 400,
-      body: {
-        success: false,
-        error: {
-          code: "VALIDATION_ERROR",
-          message: `Configuración inválida: la línea de consumo permite ${linea.plazosDisponibles.join(", ")} cuotas.`
+          message: `Configuración inválida: Máximo ${linea.maxCuotas} cuotas para la línea seleccionada.`
         }
       }
     };
@@ -244,19 +200,16 @@ function validateRequest(linea, payload) {
   };
 }
 
-function simulatePrestamo(catalogoPayload, payload) {
-  const lineas = catalogoPayload && catalogoPayload.data && Array.isArray(catalogoPayload.data.lineas)
-    ? catalogoPayload.data.lineas
-    : [];
+function simulatePrestamo(lineas, payload) {
+  const lista = Array.isArray(lineas) ? lineas : [];
 
   const lineaPrestamoId = Number(payload.lineaPrestamoId);
-  const linea = lineas.find((item) => item.id === lineaPrestamoId);
+  const linea = lista.find((item) => item.id === lineaPrestamoId);
 
   if (!linea) {
     return {
       status: 404,
       body: {
-        success: false,
         error: {
           code: "NOT_FOUND",
           message: "Línea de préstamo no activa o no encontrada"
@@ -276,49 +229,40 @@ function simulatePrestamo(catalogoPayload, payload) {
   const montoOtorgado = validation.montoOtorgado;
   const cantidadCuotas = validation.cantidadCuotas;
 
-  const tea = resolveTea(linea, cantidadCuotas);
+  const tea = resolveTea(linea);
   const monthlyRate = Math.pow(1 + tea / 100, 1 / 12) - 1;
-  const teaMensual = round(monthlyRate * 100, 4);
 
-  const extraPerInstallment =
-    montoOtorgado * (linea.costos.cuota.seguroVidaPorcentaje / 100) +
-    montoOtorgado * (linea.costos.cuota.seguroIncendioPorcentaje / 100) +
-    linea.costos.cuota.gastosAdminFijo;
+  const costosIniciales = computeInitialCosts(montoOtorgado);
 
-  const costosIniciales = computeInitialCosts(linea, montoOtorgado);
-
-  const scheduleBuilder = linea.amortizacion.sistema === "ALEMAN"
+  const sistemaAmortizacion = resolveAmortizationSystem(linea, payload);
+  const scheduleBuilder = sistemaAmortizacion === "ALEMAN"
     ? computeGermanSchedule
     : computeFrenchSchedule;
 
   const schedule = scheduleBuilder({
     montoOtorgado,
     cantidadCuotas,
-    monthlyRate,
-    extraPerInstallment,
-    startDate: new Date()
+    monthlyRate
   });
 
   return {
     status: 200,
     body: {
-      success: true,
-      data: {
-        linea: {
-          id: linea.id,
-          codigo: linea.codigo,
-          nombre: linea.nombre
-        },
-        tasa: {
-          tipo: linea.tasa.tipo,
-          tea: round(tea, 4),
-          teaMensual,
-          nota: linea.tasa.nota || "Tasa de referencia calculada para la simulación mock."
-        },
-        costosIniciales,
+      linea: {
+        codigo: linea.codigo,
+        version: linea.version,
+        nombre: linea.nombre
+      },
+      tasa: {
+        tipo: "FIJA",
+        tea: round(tea, 4),
+        fechaVigencia: DEFAULT_TASA_VIGENCIA
+      },
+      costosIniciales,
+      amortizacion: {
+        sistemaAmortizacion,
         resumen: {
           cantidadCuotas,
-          sistemaAmortizacion: linea.amortizacion.sistema,
           ...schedule.resumen
         },
         cuadroDeMarcha: schedule.cuadro

@@ -81,7 +81,7 @@ npm run mock:prestamos
 2. Configurar entorno:
 
 ```bash
-PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/prestamos/
+PRESTAMOS_API_BASE_URL=http://127.0.0.1:4010/api/v1/public/
 ENABLE_PRESTAMOS_SIMULATION=true
 ENABLE_PRESTAMOS_UI_V2=true
 ```

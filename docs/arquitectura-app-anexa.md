@@ -54,13 +54,12 @@ Servicio: `lib/server/content/content-service.ts`
 - Cache in-memory: `CONTENT_CACHE_TTL_SECONDS`
 - Fallback local: `lib/server/content/fallback-content.ts`
 
-## API pública de préstamos (proxy + fallback)
+## API pública de préstamos (proxy)
 
 Endpoints:
 
-- `GET /api/v1/public/prestamos/catalogo`
-- `GET /api/v1/public/prestamos/tasas`
-- `POST /api/v1/public/prestamos/simular` (deshabilitado por defecto)
+- `GET /api/v1/public/prestamos/lineas`
+- `POST /api/v1/public/prestamos/simulate` (deshabilitado por defecto)
 
 Servicio: `lib/server/public-prestamos-client.ts`
 
@@ -69,4 +68,4 @@ Variables opcionales:
 - `PRESTAMOS_API_BASE_URL`
 - `PRESTAMOS_API_KEY`
 - `PRESTAMOS_API_TIMEOUT_MS`
-- `ENABLE_PRESTAMOS_SIMULATION` (`true` para habilitar `POST /simular`)
+- `ENABLE_PRESTAMOS_SIMULATION` (`true` para habilitar `POST /simulate`)

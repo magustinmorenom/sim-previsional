@@ -1,30 +1,58 @@
-import { describe, expect, it } from "vitest";
-import { GET as getCatalogo } from "@/app/api/v1/public/prestamos/catalogo/route";
-import { GET as getTasas } from "@/app/api/v1/public/prestamos/tasas/route";
-import { POST as postSimular } from "@/app/api/v1/public/prestamos/simular/route";
+import { describe, expect, it, vi } from "vitest";
+import { GET as getLineas } from "@/app/api/v1/public/prestamos/lineas/route";
+import { POST as postSimulate } from "@/app/api/v1/public/prestamos/simulate/route";
 
 describe("public prestamos routes", () => {
-  it("GET /api/v1/public/prestamos/catalogo responde catálogo", async () => {
-    const response = await getCatalogo();
-    const body = await response.json();
+  it("GET /api/v1/public/prestamos/lineas responde líneas", async () => {
+    const previousBaseUrl = process.env.PRESTAMOS_API_BASE_URL;
+    const previousApiKey = process.env.PRESTAMOS_API_KEY;
+    process.env.PRESTAMOS_API_BASE_URL = "http://example.test/";
+    process.env.PRESTAMOS_API_KEY = "widget_key_dev_12345";
 
-    expect(response.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(Array.isArray(body.data.lineas)).toBe(true);
-    expect(body.data.lineas.length).toBeGreaterThan(0);
+    const lineasPayload = [
+      {
+        id: 1,
+        codigo: "LP001",
+        nombre: "Préstamos personales",
+        version: 1,
+        montoMinimo: 0,
+        montoMaximo: 6450000,
+        maxCuotas: 48,
+        sistemaAmortizacion: "FRANCES",
+        descripcion: "Préstamo para uso personal sin destino específico"
+      }
+    ];
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => lineasPayload
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await getLineas();
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.PRESTAMOS_API_BASE_URL;
+      } else {
+        process.env.PRESTAMOS_API_BASE_URL = previousBaseUrl;
+      }
+      if (previousApiKey === undefined) {
+        delete process.env.PRESTAMOS_API_KEY;
+      } else {
+        process.env.PRESTAMOS_API_KEY = previousApiKey;
+      }
+      vi.unstubAllGlobals();
+    }
   });
 
-  it("GET /api/v1/public/prestamos/tasas responde tasas", async () => {
-    const response = await getTasas();
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(typeof body.data.tasaPublica.valor).toBe("number");
-  });
-
-  it("POST /api/v1/public/prestamos/simular devuelve 501 mientras la feature está deshabilitada", async () => {
-    const request = new Request("http://localhost/api/v1/public/prestamos/simular", {
+  it("POST /api/v1/public/prestamos/simulate devuelve 501 mientras la feature está deshabilitada", async () => {
+    const request = new Request("http://localhost/api/v1/public/prestamos/simulate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -36,7 +64,7 @@ describe("public prestamos routes", () => {
       })
     });
 
-    const response = await postSimular(request);
+    const response = await postSimulate(request);
     const body = await response.json();
 
     expect(response.status).toBe(501);
@@ -44,12 +72,12 @@ describe("public prestamos routes", () => {
     expect(body.error.code).toBe("FEATURE_DISABLED");
   });
 
-  it("POST /api/v1/public/prestamos/simular valida payload cuando la feature está habilitada", async () => {
+  it("POST /api/v1/public/prestamos/simulate valida payload cuando la feature está habilitada", async () => {
     const previousFlag = process.env.ENABLE_PRESTAMOS_SIMULATION;
     process.env.ENABLE_PRESTAMOS_SIMULATION = "true";
 
     try {
-      const request = new Request("http://localhost/api/v1/public/prestamos/simular", {
+      const request = new Request("http://localhost/api/v1/public/prestamos/simulate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -61,7 +89,7 @@ describe("public prestamos routes", () => {
         })
       });
 
-      const response = await postSimular(request);
+      const response = await postSimulate(request);
       const body = await response.json();
 
       expect(response.status).toBe(400);

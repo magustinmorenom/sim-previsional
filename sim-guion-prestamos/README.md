@@ -7,8 +7,8 @@ Módulo de simulación de préstamos para la app anexa, con dos etapas de integr
 
 ## Estructura
 
-- `mock/db.json`: catálogo y tasas mock.
-- `mock/server.js`: servidor json-server + endpoint dinámico `POST /simular`.
+- `mock/db.json`: catálogo de líneas mock.
+- `mock/server.js`: servidor json-server + endpoint dinámico `POST /simulate`.
 - `mock/amortization.js`: cálculo mock para sistemas Francés y Alemán.
 - `src/domain/*`: contratos y formateadores del módulo.
 - `src/ui/*`: hook de negocio, componente principal y estilos.
@@ -18,7 +18,7 @@ Módulo de simulación de préstamos para la app anexa, con dos etapas de integr
 - `PRESTAMOS_API_BASE_URL`: base URL que consume el BFF interno.
 - `PRESTAMOS_API_KEY`: API key que reenvía el BFF al upstream.
 - `PRESTAMOS_API_TIMEOUT_MS`: timeout de requests al upstream.
-- `ENABLE_PRESTAMOS_SIMULATION`: habilita `POST /api/v1/public/prestamos/simular`.
+- `ENABLE_PRESTAMOS_SIMULATION`: habilita `POST /api/v1/public/prestamos/simulate`.
 - `ENABLE_PRESTAMOS_UI_V2`: habilita la nueva experiencia de UI en `/app/simuladores/prestamos`.
 - `PRESTAMOS_MOCK_PORT`: puerto local del mock (`4010` por defecto).
 - `PRESTAMOS_MOCK_API_KEY`: api key opcional exigida por mock.
