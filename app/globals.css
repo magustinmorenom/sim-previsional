@@ -630,11 +630,39 @@ textarea {
   border-color: #2a4870;
 }
 
+.af-control-panel .af-field select {
+  background: #1a3150;
+  color: #f2f7ff;
+  border-color: #2a4870;
+}
+
+.af-select-input-dark select {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  background-color: transparent;
+  color: #f2f7ff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 40px 0 12px;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10'%3E%3Cpath fill='%23d4e3f8' d='M7 10L0 0h14z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px 8px;
+}
+
+.af-select-input-dark select:focus {
+  outline: none;
+}
+
 .af-currency-input-dark span {
   color: #afc3de;
 }
 
 .af-control-panel .af-field input:focus,
+.af-control-panel .af-field select:focus,
 .af-currency-input-dark:focus-within {
   border-color: #60a5fa;
   outline-color: rgba(96, 165, 250, 0.2);

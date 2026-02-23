@@ -19,6 +19,7 @@ const WHAT_IF_SCENARIOS = 8;
 const WHAT_IF_TICKS = 5;
 const EDITABLE_AGE_OPTIONS = [65, 66, 67, 68, 69, 70] as const;
 const VOLUNTARY_CONTRIBUTION_STEPS = [50000, 100000, 200000, 400000, 800000] as const;
+const VOLUNTARY_END_AGE_DEFAULT = 65;
 
 type EditableFormState = {
   voluntaryMonthlyAmount: string;
@@ -126,6 +127,22 @@ export default function HomePage() {
     return Array.from({ length: WHAT_IF_TICKS }, (_, index) => maxWhatIfBenefit - index * step);
   }, [maxWhatIfBenefit]);
 
+  const voluntaryEndAgeLimits = useMemo(() => {
+    const selectedRetirementAge = toFiniteNumber(formState?.retirementAge ?? "");
+    const fallbackRetirementAge = EDITABLE_AGE_OPTIONS[0];
+    const retirementAge = Number.isFinite(selectedRetirementAge)
+      ? Math.max(fallbackRetirementAge, Math.trunc(selectedRetirementAge))
+      : fallbackRetirementAge;
+    const currentAge = titularAge ?? context?.voluntaryContribution.startAge ?? 0;
+
+    return buildVoluntaryEndAgeLimits(retirementAge, currentAge);
+  }, [context?.voluntaryContribution.startAge, formState?.retirementAge, titularAge]);
+
+  const voluntaryEndAgeOptions = useMemo(() => {
+    const count = Math.max(0, voluntaryEndAgeLimits.max - voluntaryEndAgeLimits.min) + 1;
+    return Array.from({ length: count }, (_, index) => voluntaryEndAgeLimits.min + index);
+  }, [voluntaryEndAgeLimits.max, voluntaryEndAgeLimits.min]);
+
   async function restoreSession(): Promise<void> {
     setSessionLoading(true);
 
@@ -180,12 +197,7 @@ export default function HomePage() {
       setFormState({
         voluntaryMonthlyAmount: "0",
         retirementAge: String(nextContext.mandatoryContribution.endAgeDefault),
-        voluntaryEndAge: String(
-          Math.min(
-            nextContext.voluntaryContribution.endAgeDefault,
-            nextContext.mandatoryContribution.endAgeDefault
-          )
-        )
+        voluntaryEndAge: String(VOLUNTARY_END_AGE_DEFAULT)
       });
       setResult(null);
       setError(null);
@@ -339,7 +351,31 @@ export default function HomePage() {
     });
   }
 
-  function setAgeFromQuickPicker(name: "retirementAge" | "voluntaryEndAge", age: number): void {
+  function setRetirementAgeFromQuickPicker(age: number): void {
+    setFormState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const parsedVoluntaryEndAge = toFiniteNumber(current.voluntaryEndAge);
+      const currentAge = titularAge ?? context?.voluntaryContribution.startAge ?? 0;
+      const limits = buildVoluntaryEndAgeLimits(age, currentAge);
+      const nextVoluntaryEndAge = clampInteger(
+        parsedVoluntaryEndAge,
+        limits.min,
+        limits.max,
+        Math.min(Math.max(VOLUNTARY_END_AGE_DEFAULT, limits.min), limits.max)
+      );
+
+      return {
+        ...current,
+        retirementAge: String(age),
+        voluntaryEndAge: String(nextVoluntaryEndAge)
+      };
+    });
+  }
+
+  function updateVoluntaryEndAgeSelection(rawValue: string): void {
     setFormState((current) => {
       if (!current) {
         return current;
@@ -347,7 +383,7 @@ export default function HomePage() {
 
       return {
         ...current,
-        [name]: String(age)
+        voluntaryEndAge: rawValue
       };
     });
   }
@@ -650,7 +686,7 @@ export default function HomePage() {
                                   type="button"
                                   key={`retirement-age-${age}`}
                                   className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.retirementAge, age) ? "af-quick-button-active" : ""}`}
-                                  onClick={() => setAgeFromQuickPicker("retirementAge", age)}
+                                  onClick={() => setRetirementAgeFromQuickPicker(age)}
                                 >
                                   {age}
                                 </button>
@@ -664,20 +700,18 @@ export default function HomePage() {
 
                         <label className="af-field af-editable-group">
                           <span className="af-editable-label">Edad fin aportes</span>
-                          <div className="af-age-inline-picker" role="group" aria-label="Selector de edad fin de aportes">
-                            <span className="af-age-current">{formatAgePickerValue(formState.voluntaryEndAge)}</span>
-                            <div className="af-age-option-track">
-                              {EDITABLE_AGE_OPTIONS.map((age) => (
-                                <button
-                                  type="button"
-                                  key={`voluntary-end-age-${age}`}
-                                  className={`af-quick-button af-quick-button-age ${isQuickAgeSelected(formState.voluntaryEndAge, age) ? "af-quick-button-active" : ""}`}
-                                  onClick={() => setAgeFromQuickPicker("voluntaryEndAge", age)}
-                                >
+                          <div className="af-currency-input af-currency-input-dark af-select-input-dark">
+                            <select
+                              value={formState.voluntaryEndAge}
+                              onChange={(event) => updateVoluntaryEndAgeSelection(event.target.value)}
+                              aria-label="Edad fin de aportes voluntarios"
+                            >
+                              {voluntaryEndAgeOptions.map((age) => (
+                                <option key={`voluntary-end-age-option-${age}`} value={String(age)}>
                                   {age}
-                                </button>
+                                </option>
                               ))}
-                            </div>
+                            </select>
                           </div>
                           {formErrors.voluntaryEndAge && (
                             <span className="af-field-error">{formErrors.voluntaryEndAge}</span>
@@ -825,6 +859,25 @@ export default function HomePage() {
         )}
     </section>
   );
+}
+
+function buildVoluntaryEndAgeLimits(retirementAge: number, currentAge: number): { min: number; max: number } {
+  const safeMax = Math.max(0, Math.trunc(retirementAge));
+  const minCandidate = Math.max(0, Math.trunc(currentAge) + 1);
+  const safeMin = Math.min(minCandidate, safeMax);
+
+  return {
+    min: safeMin,
+    max: safeMax
+  };
+}
+
+function clampInteger(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function parseEditableFormState(state: EditableFormState): EditableSimulationValues {

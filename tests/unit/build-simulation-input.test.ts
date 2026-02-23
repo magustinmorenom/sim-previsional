@@ -75,4 +75,22 @@ describe("buildSimulationInputFromContext", () => {
     expect(errors.voluntaryEndAge).toBeTruthy();
     expect(errors.voluntaryMonthlyAmount).toBeTruthy();
   });
+
+  it("valida que fin de aportes sea mayor a edad actual y permita tope igual a jubilación", () => {
+    const tooLow = validateEditableSimulationValues(contextFixture, {
+      retirementAge: 65,
+      voluntaryEndAge: 50,
+      voluntaryMonthlyAmount: 0
+    });
+
+    expect(tooLow.voluntaryEndAge).toContain("mayor que la edad actual");
+
+    const maxAllowed = validateEditableSimulationValues(contextFixture, {
+      retirementAge: 65,
+      voluntaryEndAge: 65,
+      voluntaryMonthlyAmount: 0
+    });
+
+    expect(maxAllowed.voluntaryEndAge).toBeUndefined();
+  });
 });
