@@ -51,6 +51,15 @@ const BASE_MODULES: ModuleDescriptor[] = [
     enabled: true
   },
   {
+    key: "tramites",
+    title: "Trámites",
+    description: "Generación de BEP para aportes a través de Comunidad Vinculada - Personería Jurídica.",
+    path: "/app/tramites",
+    visibility: "private",
+    enabled: true,
+    badge: "Privado"
+  },
+  {
     key: "chatbot-cps",
     title: "Chatbot CPS",
     description: "Asistente documental con búsqueda sobre normativa y procesos.",

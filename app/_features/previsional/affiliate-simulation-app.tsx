@@ -310,22 +310,6 @@ export default function HomePage() {
     }
   }
 
-  async function handleLogout(): Promise<void> {
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      await fetch("/api/v1/auth/sessions", {
-        method: "DELETE"
-      });
-    } finally {
-      setSession(null);
-      setChallenge(null);
-      setOtpCode("");
-      setAuthLoading(false);
-    }
-  }
-
   function updateVoluntaryAmountInput(rawValue: string): void {
     setFormState((current) => {
       if (!current) {
@@ -530,19 +514,6 @@ export default function HomePage() {
 
         {!sessionLoading && session && (
           <section className="af-content-stack">
-            <div className="af-toolbar">
-              <div className="af-toolbar-copy">
-                <span className="af-session-title">
-                  <span className="af-online-dot" aria-hidden="true" />
-                  Afiliado en sesión activa
-                </span>
-                <strong>{context?.affiliate.fullName ?? "Cargando datos del afiliado..."}</strong>
-              </div>
-              <button type="button" className="af-btn af-btn-soft" onClick={() => void handleLogout()}>
-                Cerrar sesión
-              </button>
-            </div>
-
             {contextLoading && (
               <article className="af-card af-loading-card">
                 <h2>Cargando información del afiliado</h2>

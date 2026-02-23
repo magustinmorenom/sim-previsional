@@ -11,6 +11,7 @@ interface FakeBeneficiary {
 export interface FakeAffiliateRecord {
   email: string;
   fullName: string;
+  fileNumber: string;
   calculationDate: string;
   funds: {
     mandatory: number;

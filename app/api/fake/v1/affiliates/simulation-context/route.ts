@@ -33,7 +33,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     {
       affiliate: {
         email: affiliate.email,
-        fullName: affiliate.fullName
+        fullName: affiliate.fullName,
+        fileNumber: affiliate.fileNumber
       },
       calculationDate: affiliate.calculationDate,
       funds: {

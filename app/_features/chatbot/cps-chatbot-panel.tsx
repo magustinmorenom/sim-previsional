@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
 
@@ -13,6 +13,7 @@ type ChatMessage = {
 
 interface CpsChatbotPanelProps {
   className?: string;
+  active?: boolean;
 }
 
 const INITIAL_MESSAGE: ChatMessage = {
@@ -44,13 +45,13 @@ function getErrorMessage(payload: unknown): string {
   return "No fue posible obtener respuesta del asistente.";
 }
 
-export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
+export function CpsChatbotPanel({ className, active = true }: CpsChatbotPanelProps = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const shouldStickToBottomRef = useRef(true);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const firstRenderRef = useRef(true);
 
   function scrollToBottom(behavior: ScrollBehavior): void {
@@ -63,6 +64,18 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
       behavior
     });
   }
+
+  const focusInput = useCallback((): void => {
+    if (!active || loading || !inputRef.current) {
+      return;
+    }
+
+    if (document.activeElement !== inputRef.current) {
+      inputRef.current.focus({
+        preventScroll: true
+      });
+    }
+  }, [active, loading]);
 
   const persistableMessages = useMemo(
     () => messages.filter((item) => item.persist).map((item) => ({ role: item.role, content: item.content })),
@@ -117,10 +130,12 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
       return;
     }
 
-    if (shouldStickToBottomRef.current) {
-      scrollToBottom("smooth");
-    }
+    scrollToBottom("smooth");
   }, [messages, loading]);
+
+  useEffect(() => {
+    focusInput();
+  }, [focusInput, messages.length]);
 
   async function sendMessage(rawContent: string): Promise<void> {
     const content = rawContent.trim();
@@ -133,7 +148,6 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
       .slice(-12)
       .map((item) => ({ role: item.role, content: item.content }));
 
-    shouldStickToBottomRef.current = true;
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setError(null);
@@ -184,11 +198,14 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
     void sendMessage(input);
   }
 
-  function handleViewportScroll(event: React.UIEvent<HTMLDivElement>): void {
-    const element = event.currentTarget;
-    const threshold = 44;
-    const distanceToBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
-    shouldStickToBottomRef.current = distanceToBottom <= threshold;
+  function handleInputBlur(): void {
+    if (!active || loading) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      focusInput();
+    });
   }
 
   const shellClassName = className ? `anx-chat-shell ${className}` : "anx-chat-shell";
@@ -196,7 +213,7 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
   return (
     <article className={shellClassName}>
       <header className="anx-chat-head">
-        <div>
+        <div className="anx-chat-head-main">
           <h2>
             <span className="anx-chat-title-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">
@@ -210,7 +227,7 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
         </div>
       </header>
 
-      <div className="anx-chat-window" ref={viewportRef} aria-live="polite" onScroll={handleViewportScroll}>
+      <div className="anx-chat-window" ref={viewportRef} aria-live="polite">
         {messages.map((message, index) => (
           <article
             key={message.id}
@@ -242,12 +259,14 @@ export function CpsChatbotPanel({ className }: CpsChatbotPanelProps = {}) {
         <label className="sr-only" htmlFor="cps-chat-input">Mensaje para IA CPS</label>
         <input
           id="cps-chat-input"
+          ref={inputRef}
           className="anx-chat-input"
           type="text"
           placeholder="Escribí tu consulta..."
           autoComplete="off"
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          onBlur={handleInputBlur}
           disabled={loading}
         />
         <button

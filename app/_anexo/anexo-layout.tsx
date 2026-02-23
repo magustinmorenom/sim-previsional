@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/app/_anexo/breadcrumbs";
 import { ContentTransition } from "@/app/_anexo/content-transition";
 import { NavigationLoadingOverlay } from "@/app/_anexo/navigation-loading-overlay";
+import { SessionChipline } from "@/app/_anexo/session-chipline";
 import { TopNav } from "@/app/_anexo/top-nav";
 import { WorkspaceWithChat } from "@/app/_anexo/workspace-with-chat";
 import { getNavigationModules } from "@/lib/config/module-access";
@@ -13,7 +14,8 @@ import { getAuthSessionCookieName, parseAuthSessionCookieValue } from "@/lib/ser
 export async function AnexoLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const sessionCookieValue = cookieStore.get(getAuthSessionCookieName())?.value;
-  const hasSession = Boolean(parseAuthSessionCookieValue(sessionCookieValue));
+  const session = parseAuthSessionCookieValue(sessionCookieValue);
+  const hasSession = Boolean(session);
   const modules = getNavigationModules();
 
   return (
@@ -34,15 +36,18 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
 
         <div className="anx-header-nav">
           <TopNav modules={modules} hasSession={hasSession} className="anx-topnav-inline" />
-          {hasSession && (
-            <div className="anx-session-pill" aria-live="polite">
-              Sesión activa
-            </div>
-          )}
         </div>
       </header>
 
-      <Breadcrumbs />
+      <div className="anx-breadcrumb-row">
+        <Breadcrumbs />
+        <SessionChipline
+          authenticated={hasSession}
+          fullName={session?.fullName}
+          email={session?.email}
+          fileNumber={session?.fileNumber}
+        />
+      </div>
       <WorkspaceWithChat>
         <ContentTransition>{children}</ContentTransition>
       </WorkspaceWithChat>

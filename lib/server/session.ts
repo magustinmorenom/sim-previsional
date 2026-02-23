@@ -9,6 +9,8 @@ const OTP_MAX_ATTEMPTS = 5;
 export interface AuthSessionState {
   email: string;
   expiresAt: number;
+  fullName?: string;
+  fileNumber?: string;
 }
 
 export interface AuthChallengeState {
@@ -114,12 +116,16 @@ function setSignedCookie(
 
 export function setAuthSessionCookie(
   response: NextResponse,
-  payload: { email: string }
+  payload: { email: string; fullName?: string | null; fileNumber?: string | null }
 ): void {
   const expiresAt = nowEpochSeconds() + SESSION_MAX_AGE_SECONDS;
+  const normalizedFullName = payload.fullName?.trim();
+  const normalizedFileNumber = payload.fileNumber?.trim();
   const state: AuthSessionState = {
     email: payload.email,
-    expiresAt
+    expiresAt,
+    ...(normalizedFullName ? { fullName: normalizedFullName } : {}),
+    ...(normalizedFileNumber ? { fileNumber: normalizedFileNumber } : {})
   };
 
   setSignedCookie(response, getAuthSessionCookieName(), state, SESSION_MAX_AGE_SECONDS);
@@ -143,6 +149,13 @@ export function parseAuthSessionCookieValue(rawValue: string | null | undefined)
   }
 
   if (!payload.email || typeof payload.expiresAt !== "number") {
+    return null;
+  }
+
+  if (
+    ("fullName" in payload && payload.fullName !== undefined && typeof payload.fullName !== "string") ||
+    ("fileNumber" in payload && payload.fileNumber !== undefined && typeof payload.fileNumber !== "string")
+  ) {
     return null;
   }
 

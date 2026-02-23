@@ -1221,8 +1221,34 @@ textarea {
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  color: #5f7894;
+  color: #f8eef2;
   font-size: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.anx-breadcrumb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+  padding: 8px 12px;
+}
+
+.anx-breadcrumb-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: rgba(141, 34, 72, 0.9);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .anx-breadcrumb-item {
@@ -1232,17 +1258,139 @@ textarea {
 }
 
 .anx-breadcrumb-item a {
-  color: #2a578c;
+  color: #fff3f8;
   text-decoration: none;
 }
 
 .anx-breadcrumb-current {
-  color: #0f2f58;
+  color: #ffffff;
   font-weight: 700;
 }
 
 .anx-breadcrumb-sep {
-  color: #8ea6c1;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.anx-session-chipline {
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.anx-session-chipline::-webkit-scrollbar {
+  height: 4px;
+}
+
+.anx-session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2bfd0;
+  background: #f8e9f0;
+  color: #6f2a46;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.anx-session-chip-info {
+  max-width: 320px;
+  background: #fbeff4;
+  border-color: #e4bfd0;
+  color: #6f2b47;
+}
+
+.anx-session-chip-info span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.anx-session-chip-online {
+  border-color: #b5dec6;
+  background: #e9f7ef;
+  color: #1d6a3f;
+}
+
+.anx-session-chip-name {
+  max-width: 280px;
+}
+
+.anx-session-chip-offline {
+  border-color: #e6c0cf;
+  background: #f9edf2;
+  color: #7d2845;
+}
+
+.anx-session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.anx-session-chip-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  flex: 0 0 auto;
+}
+
+.anx-session-chip-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.anx-session-action {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #204f84;
+  background: #1f4d82;
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  flex: 0 0 auto;
+}
+
+.anx-session-action:hover {
+  background: #173f69;
+  border-color: #173f69;
+  transform: translateY(-1px);
+}
+
+.anx-session-action:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
 }
 
 .anx-content {
@@ -2050,7 +2198,7 @@ textarea {
 }
 
 .anx-topnav-link:hover {
-  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 44, 78, 0.10);
 }
 
 .anx-topnav-link-label {
@@ -2356,7 +2504,7 @@ button {
   display: grid;
   gap: 12px;
   position: sticky;
-  top: 16px;
+  top: 2px;
   opacity: 1;
   transform: translateX(0);
   transition: transform 0.24s ease, opacity 0.24s ease, max-height 0.24s ease;
@@ -2677,15 +2825,17 @@ button {
 .anx-chat-dock {
   position: relative;
   width: 100%;
+  height: 72px;
+  max-height: 100vh;
   border-radius: 20px;
-  min-height: 76px;
   background: linear-gradient(155deg, #871f45 0%, #a12d52 46%, #1f4d82 100%);
   box-shadow: 0 16px 34px rgba(85, 24, 53, 0.28);
   overflow: hidden;
 }
 
 .anx-chat-dock-open {
-  min-height: calc(100vh - 220px);
+  height: var(--anx-chat-open-height, 100dvh);
+  max-height: var(--anx-chat-open-height, 100dvh);
 }
 
 .anx-chat-toggle {
@@ -2725,13 +2875,18 @@ button {
 
 .anx-workspace-chat-body {
   padding: 16px;
-  padding-top: 70px;
-  min-height: calc(100vh - 220px);
+  padding-top: 12px;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .anx-chat-shell,
 .anx-chat-shell-embedded {
-  min-height: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   border: none;
   border-radius: 16px;
   box-shadow: none;
@@ -2739,6 +2894,7 @@ button {
   color: #ffffff;
   padding: 0;
   gap: 12px;
+  overflow: hidden;
 }
 
 .anx-chat-shell::before,
@@ -2748,11 +2904,25 @@ button {
 
 .anx-chat-head {
   justify-content: flex-start;
+  align-items: center;
+  min-height: 52px;
+  padding-right: 64px;
+  gap: 10px;
+}
+
+.anx-chat-head-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .anx-chat-head h2,
 .anx-chat-head p {
   color: #ffffff;
+}
+
+.anx-chat-head p {
+  margin: 0;
 }
 
 .anx-chat-title-icon {
@@ -2761,12 +2931,15 @@ button {
 
 .anx-chat-window {
   min-height: 0;
-  max-height: none;
-  height: 100%;
+  max-height: 100%;
+  height: auto;
   border: none;
   background: transparent;
   backdrop-filter: none;
   padding: 2px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
 }
 
 .anx-chat-bubble {
@@ -2800,17 +2973,20 @@ button {
 }
 
 .anx-chat-send {
-  background: #ffffff;
-  color: #6f2148;
-  border: 1px solid transparent;
+  background: #7a3f6e;
+  color: #ffffff;
+  border: 1px solid #93679b;
 }
 
 .anx-chat-send:hover {
-  background: #f6f8ff;
+  background: #66325d;
+  box-shadow: 0 8px 16px rgba(61, 27, 79, 0.32);
 }
 
 .anx-chat-send:disabled {
-  opacity: 0.64;
+  opacity: 0.62;
+  background: #8b6f92;
+  color: rgba(255, 255, 255, 0.84);
 }
 
 .anx-chat-typing small {
@@ -2819,7 +2995,8 @@ button {
 
 .anx-workspace-with-chat:not(.anx-workspace-with-chat-open) .anx-chat-dock {
   width: 72px;
-  min-height: 72px;
+  height: 72px;
+  max-height: 72px;
   border-radius: 999px;
   overflow: visible;
   background: transparent;
@@ -2910,6 +3087,18 @@ button {
     flex-wrap: wrap;
   }
 
+  .anx-breadcrumb-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .anx-session-chipline {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .anx-header-nav {
     width: 100%;
     flex-wrap: wrap;
@@ -2934,7 +3123,8 @@ button {
 
   .anx-workspace-with-chat-mobile .anx-chat-dock {
     border-radius: 0;
-    min-height: calc(100vh - 24px);
+    height: 100dvh;
+    max-height: 100dvh;
   }
 
   .anx-workspace-with-chat-mobile .anx-chat-toggle {
@@ -2944,10 +3134,11 @@ button {
   }
 
   .anx-workspace-with-chat-mobile .anx-workspace-chat-body {
-    min-height: calc(100vh - 24px);
-    height: calc(100vh - 24px);
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
     padding: 12px;
-    padding-top: 70px;
+    padding-top: 12px;
   }
 }
 

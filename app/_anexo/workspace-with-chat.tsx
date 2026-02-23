@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CpsChatbotPanel } from "@/app/_features/chatbot/cps-chatbot-panel";
 
 const CHAT_OPEN_STORAGE_KEY = "anx-chat-open";
@@ -27,6 +27,8 @@ function readSavedOpenState(): boolean {
 export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
   const [chatOpen, setChatOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [chatOpenHeight, setChatOpenHeight] = useState<number | null>(null);
+  const chatDockRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const updateViewportMode = () => {
@@ -50,11 +52,51 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
     window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, chatOpen ? "1" : "0");
   }, [chatOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || isMobile || !chatOpen) {
+      return;
+    }
+
+    let rafId = 0;
+
+    const syncChatHeight = () => {
+      const dock = chatDockRef.current;
+      if (!dock) {
+        return;
+      }
+
+      const dockTop = Math.max(0, dock.getBoundingClientRect().top);
+      const nextHeight = Math.max(72, Math.floor(window.innerHeight - dockTop));
+      setChatOpenHeight((current) => (current === nextHeight ? current : nextHeight));
+    };
+
+    const requestSync = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(syncChatHeight);
+    };
+
+    requestSync();
+    window.addEventListener("resize", requestSync);
+    window.addEventListener("scroll", requestSync, { passive: true });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", requestSync);
+      window.removeEventListener("scroll", requestSync);
+    };
+  }, [chatOpen, isMobile]);
+
   const workspaceStyle = useMemo(() => {
-    return {
+    const style = {
       "--anx-chat-width": chatOpen ? "35%" : "72px"
-    } as CSSProperties;
-  }, [chatOpen]);
+    } as Record<string, string>;
+
+    if (chatOpenHeight) {
+      style["--anx-chat-open-height"] = `${chatOpenHeight}px`;
+    }
+
+    return style as CSSProperties;
+  }, [chatOpen, chatOpenHeight]);
 
   return (
     <div
@@ -64,7 +106,7 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
       <main className="anx-workspace-main">{children}</main>
 
       <aside className={`anx-workspace-chat ${chatOpen ? "anx-workspace-chat-open" : ""}`} aria-label="Asistente IA">
-        <div className={`anx-chat-dock ${chatOpen ? "anx-chat-dock-open" : ""}`}>
+        <div ref={chatDockRef} className={`anx-chat-dock ${chatOpen ? "anx-chat-dock-open" : ""}`}>
           <button
             type="button"
             className="anx-chat-toggle"
@@ -81,7 +123,7 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
           </button>
 
           <div className="anx-workspace-chat-body">
-            <CpsChatbotPanel className="anx-chat-shell-embedded" />
+            <CpsChatbotPanel className="anx-chat-shell-embedded" active={chatOpen} />
           </div>
         </div>
       </aside>
