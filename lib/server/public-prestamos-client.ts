@@ -118,7 +118,7 @@ function ensureSimulacionResponse(payload: unknown): PrestamosSimularResponse {
     );
   }
 
-  return normalized as PrestamosSimularResponse;
+  return normalized as unknown as PrestamosSimularResponse;
 }
 
 function parseRemoteError(status: number, payload: unknown): PrestamosPublicApiError {
