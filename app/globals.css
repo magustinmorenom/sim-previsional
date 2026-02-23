@@ -2020,6 +2020,43 @@ textarea {
   font-size: 13px;
 }
 
+.anx-chat-markdown {
+  display: grid;
+  gap: 8px;
+}
+
+.anx-chat-markdown p {
+  margin: 0;
+}
+
+.anx-chat-markdown ul,
+.anx-chat-markdown ol {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+}
+
+.anx-chat-markdown li {
+  margin: 0;
+}
+
+.anx-chat-markdown a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.anx-chat-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9em;
+  background: rgba(16, 39, 62, 0.1);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+
 .anx-chat-typing {
   width: fit-content;
   display: inline-flex;
@@ -3080,6 +3117,10 @@ button {
 .anx-chat-bubble-role,
 .anx-chat-bubble-text {
   color: #ffffff;
+}
+
+.anx-chat-shell-embedded .anx-chat-markdown code {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .anx-chat-form {
