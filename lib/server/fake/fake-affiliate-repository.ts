@@ -18,6 +18,8 @@ export interface FakeAffiliateRecord {
     voluntary: number;
   };
   bov: number;
+  mrsValue: number;
+  matriculationDate: string;
   mandatoryContribution: {
     startAge: number;
     endAge: number;

@@ -26,6 +26,11 @@ const contextFixture: AffiliateSimulationContext = {
     startAge: 58,
     endAgeDefault: 65
   },
+  solidary: {
+    mrsValue: 150000,
+    matriculationDate: "1995-01-10",
+    sourceStatus: "READY"
+  },
   beneficiaries: [
     {
       fullName: "Afiliado de Prueba",
@@ -60,6 +65,8 @@ describe("buildSimulationInputFromContext", () => {
     expect(input.voluntaryContribution.startAge).toBe(58);
     expect(input.voluntaryContribution.endAge).toBe(64);
     expect(input.voluntaryContribution.monthlyAmount).toBe(15000);
+    expect(input.solidary?.mrsValue).toBe(150000);
+    expect(input.solidary?.matriculationDate).toBe("1995-01-10");
     expect(input.beneficiaries).toHaveLength(2);
     expect("fullName" in input.beneficiaries[0]).toBe(false);
   });

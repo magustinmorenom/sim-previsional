@@ -19,6 +19,10 @@ describe("POST /api/v1/simulations/run", () => {
     expect(typeof body.ppuu).toBe("number");
     expect(typeof body.finalBalance).toBe("number");
     expect(typeof body.projectedBenefit).toBe("number");
+    expect(typeof body.capitalizationBenefit).toBe("number");
+    expect(typeof body.solidaryBenefit).toBe("number");
+    expect(typeof body.totalProjectedBenefit).toBe("number");
+    expect(typeof body.solidaryStatus?.code).toBe("string");
   });
 
   it("responde 200 para aporte voluntario mensual alto", async () => {
@@ -41,6 +45,9 @@ describe("POST /api/v1/simulations/run", () => {
 
     expect(response.status).toBe(200);
     expect(typeof body.ppuu).toBe("number");
+    expect(body.totalProjectedBenefit).toBe(
+      body.capitalizationBenefit + body.solidaryBenefit
+    );
   });
 
   it("responde 422 cuando n > 12", async () => {

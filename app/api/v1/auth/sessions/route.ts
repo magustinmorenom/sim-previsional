@@ -91,12 +91,22 @@ function pickAffiliateIdentity(remotePayload: unknown, email: string): Affiliate
   }
 
   const payload = remotePayload as Record<string, unknown>;
-  const titularName = readString(payload, ["data.titular.nombre", "titular.nombre"]);
-  const titularSurname = readString(payload, ["data.titular.apellido", "titular.apellido"]);
-  const fullNameFromInfo = [titularName, titularSurname].filter(Boolean).join(" ").trim();
+  const titularFirstName = readString(payload, ["data.titular.nombre", "titular.nombre"]);
+  const titularLastName = readString(payload, ["data.titular.apellido", "titular.apellido"]);
+  const titularFullName = `${titularFirstName ?? ""} ${titularLastName ?? ""}`.trim();
+
   const fullName =
-    readString(payload, ["affiliate.fullName", "affiliate.name", "fullName", "name"]) ??
-    (fullNameFromInfo.length > 0 ? fullNameFromInfo : null) ??
+    readString(payload, [
+      "affiliate.fullName",
+      "affiliate.name",
+      "fullName",
+      "name",
+      "data.affiliate.fullName",
+      "data.affiliate.name",
+      "data.titular.nombreCompleto",
+      "titular.nombreCompleto"
+    ]) ??
+    (titularFullName.length > 0 ? titularFullName : null) ??
     buildFallbackAffiliateName(email);
   const fileNumber = readString(payload, [
     "affiliate.fileNumber",
@@ -108,7 +118,9 @@ function pickAffiliateIdentity(remotePayload: unknown, email: string): Affiliate
     "fileNumber",
     "legajo",
     "memberNumber",
-    "memberId"
+    "memberId",
+    "data.titular.legajo",
+    "titular.legajo"
   ]);
 
   return {

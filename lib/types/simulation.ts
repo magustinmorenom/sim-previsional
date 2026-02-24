@@ -16,12 +16,18 @@ export interface VoluntaryContribution extends ContributionRange {
   monthlyAmount: number;
 }
 
+export interface SolidarySimulationInput {
+  mrsValue?: number | null;
+  matriculationDate?: string | null;
+}
+
 export interface SimulationInput {
   calculationDate: string;
   accountBalance: number;
   bov: number;
   mandatoryContribution: ContributionRange;
   voluntaryContribution: VoluntaryContribution;
+  solidary?: SolidarySimulationInput;
   beneficiaries: BeneficiaryInput[];
 }
 
@@ -66,9 +72,33 @@ export interface SimulationTrace {
   };
 }
 
+export type SolidaryStatusCode =
+  | "APPLIED_FULL"
+  | "APPLIED_PROPORTIONAL"
+  | "APPLIED_INCREMENTED"
+  | "NOT_ELIGIBLE_AGE"
+  | "NOT_ELIGIBLE_MIN_CONTRIBUTION_YEARS"
+  | "NOT_SIMULABLE_MISSING_DATA"
+  | "NOT_SIMULABLE_INVALID_DATA";
+
+export interface SolidaryStatus {
+  code: SolidaryStatusCode;
+  message: string;
+  eligible: boolean;
+  mrsValue: number | null;
+  contributionYears: number | null;
+  requiredYears: number;
+  ageAtRetirement: number | null;
+  percentageApplied: number;
+}
+
 export interface SimulationResult {
   ppuu: number;
+  capitalizationBenefit: number;
   projectedBenefit: number;
+  solidaryBenefit: number;
+  totalProjectedBenefit: number;
+  solidaryStatus: SolidaryStatus;
   finalBalance: number;
   retirementDate: string;
   counts: CountsTrace;

@@ -72,6 +72,10 @@ export function buildSimulationInputFromContext(
       endAge: values.voluntaryEndAge,
       monthlyAmount: values.voluntaryMonthlyAmount
     },
+    solidary: {
+      mrsValue: context.solidary.mrsValue,
+      matriculationDate: context.solidary.matriculationDate
+    },
     beneficiaries: context.beneficiaries.map((beneficiary) => ({
       type: beneficiary.type,
       sex: beneficiary.sex,

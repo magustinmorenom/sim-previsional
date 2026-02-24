@@ -131,6 +131,11 @@ Response `200`:
     "startAge": 58,
     "endAgeDefault": 65
   },
+  "solidary": {
+    "mrsValue": 150000,
+    "matriculationDate": "1984-10-11",
+    "sourceStatus": "READY"
+  },
   "beneficiaries": [
     {
       "fullName": "Nombre Apellido",
@@ -145,6 +150,11 @@ Response `200`:
 
 Errores esperados: `401`, `422`, `502`.
 
+Notas:
+
+- Si faltan `MRS` y/o `fechaMatriculacion`, el contexto sigue devolviendo `200` con `solidary.sourceStatus` indicando faltantes.
+- `422` se reserva para faltantes críticos que impiden simular capitalización.
+
 ## API fake local
 
 ### URI base fake
@@ -156,6 +166,14 @@ Errores esperados: `401`, `422`, `502`.
 - `POST /api/fake/v1/auth/challenges`
 - `POST /api/fake/v1/auth/sessions`
 - `GET /api/fake/v1/affiliates/simulation-context?email=...`
+
+La API fake devuelve formato tipo API real (`success/message/data`) con:
+
+- `data.valorVAR`
+- `data.valorMRS`
+- `data.titular.fechaMatriculacion`
+- `data.cuentaCapitalizacion.*`
+- `data.titular` + `data.grupoFamiliar`
 
 ### Casos cargados desde JSON
 
@@ -196,4 +214,6 @@ Sin SMTP, en desarrollo se activa modo debug y el OTP se expone como `devOtpCode
 
 ## Regla de datos faltantes
 
-Si la API remota no devuelve campos obligatorios para construir el contexto canónico de simulación, el BFF responde `422` y bloquea la simulación.
+Si la API remota no devuelve campos obligatorios para construir el contexto canónico de simulación de capitalización, el BFF responde `422` y bloquea la simulación.
+
+Si faltan solo datos de PBS (`MRS` o `fechaMatriculacion`), el BFF responde `200` y deja `solidary.sourceStatus` en estado de faltante.
