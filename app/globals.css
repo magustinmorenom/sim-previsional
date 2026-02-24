@@ -1261,6 +1261,12 @@ textarea {
   gap: 8px;
   overflow-x: auto;
   padding: 8px;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
+
+.anx-topnav-scroll::-webkit-scrollbar {
+  display: none;                  /* Chrome, Safari, Opera */
 }
 
 .anx-topnav-link {
@@ -1318,6 +1324,7 @@ textarea {
   position: relative;
   isolation: isolate;
   padding: 8px 12px;
+  overflow: hidden;
 }
 
 .anx-breadcrumb-row::before {
@@ -1363,11 +1370,12 @@ textarea {
   gap: 8px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .anx-session-chipline::-webkit-scrollbar {
-  height: 4px;
+  display: none;
 }
 
 .anx-session-chip {
@@ -3280,6 +3288,7 @@ button {
   .anx-session-chipline {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .anx-header-nav {
