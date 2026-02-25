@@ -176,7 +176,7 @@ function getPublicPrestamosBaseUrl(): string {
 }
 
 function getApiKey(): string {
-  return process.env.PRESTAMOS_API_KEY?.trim() || "";
+  return process.env.API_KEY_CPS?.trim() || process.env.PRESTAMOS_API_KEY?.trim() || "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -320,7 +320,7 @@ async function requestPrestamosApi(path: string, options?: { method?: "GET" | "P
 
 export async function getPrestamosCatalogo(): Promise<{ data: PrestamosCatalogoResponse; source: "remote" | "fallback" }> {
   try {
-    const payload = await requestPrestamosApi("catalogo", {
+    const payload = await requestPrestamosApi("prestamos/lineas", {
       method: "GET"
     });
 
@@ -328,21 +328,17 @@ export async function getPrestamosCatalogo(): Promise<{ data: PrestamosCatalogoR
       data: ensureCatalogoResponse(payload),
       source: "remote"
     };
-  } catch (error) {
-    if (error instanceof PrestamosPublicApiError && error.code === "PRESTAMOS_BASE_URL_MISSING") {
-      return {
-        data: fallbackCatalogo,
-        source: "fallback"
-      };
-    }
-
-    throw error;
+  } catch {
+    return {
+      data: fallbackCatalogo,
+      source: "fallback"
+    };
   }
 }
 
 export async function getPrestamosTasas(): Promise<{ data: PrestamosTasasResponse; source: "remote" | "fallback" }> {
   try {
-    const payload = await requestPrestamosApi("tasas", {
+    const payload = await requestPrestamosApi("prestamos/lineas", {
       method: "GET"
     });
 
@@ -350,20 +346,16 @@ export async function getPrestamosTasas(): Promise<{ data: PrestamosTasasRespons
       data: ensureTasasResponse(payload),
       source: "remote"
     };
-  } catch (error) {
-    if (error instanceof PrestamosPublicApiError && error.code === "PRESTAMOS_BASE_URL_MISSING") {
-      return {
-        data: fallbackTasas,
-        source: "fallback"
-      };
-    }
-
-    throw error;
+  } catch {
+    return {
+      data: fallbackTasas,
+      source: "fallback"
+    };
   }
 }
 
 export async function postPrestamosSimulacion(body: PrestamosSimularRequest): Promise<PrestamosSimularResponse> {
-  const payload = await requestPrestamosApi("simular", {
+  const payload = await requestPrestamosApi("prestamos/simulate", {
     method: "POST",
     body
   });
