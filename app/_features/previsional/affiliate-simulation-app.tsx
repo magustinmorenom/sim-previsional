@@ -12,7 +12,11 @@ import type {
   AuthChallengeResponse,
   SessionInfo
 } from "@/lib/types/auth";
-import type { SimulationInput, SimulationResult } from "@/lib/types/simulation";
+import type {
+  SimulationInput,
+  SimulationResult,
+  SolidaryStatus
+} from "@/lib/types/simulation";
 
 const WHAT_IF_STEP = 100000;
 const WHAT_IF_SCENARIOS = 8;
@@ -588,6 +592,12 @@ export default function HomePage() {
                     </div>
                     <div className="af-side-inline-values">
                       <span>VAR: {formatCurrency(context.bov)}</span>
+                      <span>
+                        MRS:{" "}
+                        {context.solidary.mrsValue !== null
+                          ? formatCurrency(context.solidary.mrsValue)
+                          : "No disponible"}
+                      </span>
                       <span>Fecha cálculo: {formatIsoToDisplay(context.calculationDate)}</span>
                     </div>
                   </article>
@@ -769,18 +779,26 @@ export default function HomePage() {
                     </article>
                   ) : (
                     <>
-                      <section className="af-main-kpis">
+                      <section className="af-main-kpis af-main-kpis-triple">
                         <article className="af-card af-main-kpi-card af-main-kpi-primary">
-                          <span>Haber mensual proyectado</span>
-                          <strong>{formatCurrency(result.projectedBenefit)}</strong>
+                          <span>Haber total proyectado</span>
+                          <strong>{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
                         </article>
+                        <article className="af-card af-main-kpi-card">
+                          <span>Componente capitalización</span>
+                          <strong>{formatCurrency(resolveCapitalizationBenefit(result))}</strong>
+                        </article>
+                        <article className="af-card af-main-kpi-card">
+                          <span>Componente fondo solidario</span>
+                          <strong>{formatCurrency(resolveSolidaryBenefit(result))}</strong>
+                        </article>
+                      </section>
+
+                      <section className="af-main-kpis af-main-kpis-secondary af-main-kpis-triple">
                         <article className="af-card af-main-kpi-card">
                           <span>Capital final estimado</span>
                           <strong>{formatCurrency(result.finalBalance)}</strong>
                         </article>
-                      </section>
-
-                      <section className="af-main-kpis af-main-kpis-secondary">
                         <article className="af-card af-main-kpi-card">
                           <span>PPUU</span>
                           <strong>{formatNumber(result.ppuu, 2)}</strong>
@@ -790,6 +808,16 @@ export default function HomePage() {
                           <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
                         </article>
                       </section>
+
+                      <div
+                        className={`af-status ${
+                          resolveSolidaryStatus(result).eligible
+                            ? "af-status-info"
+                            : "af-status-warning"
+                        }`}
+                      >
+                        PBS: {resolveSolidaryStatus(result).message}
+                      </div>
 
                       <article className="af-card af-chart-main-card">
                         <div className="af-chart-header">
@@ -947,6 +975,7 @@ function buildWhatIfRows(baseInput: SimulationInput, baseResult: SimulationResul
   const contributionMonths =
     Math.max(0, baseInput.voluntaryContribution.endAge - baseInput.voluntaryContribution.startAge) * 12;
   const ppuuSafe = baseResult.ppuu > 0 ? baseResult.ppuu : 1;
+  const fixedSolidaryBenefit = resolveSolidaryBenefit(baseResult);
 
   const scenarios = Array.from(
     { length: WHAT_IF_SCENARIOS },
@@ -959,7 +988,7 @@ function buildWhatIfRows(baseInput: SimulationInput, baseResult: SimulationResul
 
     return {
       monthlyAmount,
-      projectedBenefit: Math.max(0, estimatedFinalBalance / ppuuSafe)
+      projectedBenefit: Math.max(0, estimatedFinalBalance / ppuuSafe) + fixedSolidaryBenefit
     };
   });
 }
@@ -998,6 +1027,63 @@ function sanitizeUserError(message: string): string {
   }
 
   return message;
+}
+
+function resolveSolidaryStatus(result: SimulationResult): SolidaryStatus {
+  const fallback: SolidaryStatus = {
+    code: "NOT_SIMULABLE_MISSING_DATA",
+    message:
+      "No se pudo simular el componente solidario porque faltan MRS o fecha de matriculación.",
+    eligible: false,
+    mrsValue: null,
+    contributionYears: null,
+    requiredYears: 35,
+    ageAtRetirement: null,
+    percentageApplied: 0
+  };
+
+  const statusCandidate = (result as unknown as { solidaryStatus?: SolidaryStatus })
+    .solidaryStatus;
+  if (!statusCandidate || typeof statusCandidate !== "object") {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    ...statusCandidate
+  };
+}
+
+function resolveCapitalizationBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { capitalizationBenefit?: number })
+    .capitalizationBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return result.projectedBenefit;
+}
+
+function resolveSolidaryBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { solidaryBenefit?: number }).solidaryBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return 0;
+}
+
+function resolveTotalProjectedBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { totalProjectedBenefit?: number })
+    .totalProjectedBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return resolveCapitalizationBenefit(result) + resolveSolidaryBenefit(result);
 }
 
 function formatBeneficiaryType(type: "T" | "C" | "H"): string {

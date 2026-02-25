@@ -1,4 +1,4 @@
-npm# Contrato API - Simulación Previsional
+# Contrato API - Simulación Previsional
 
 ## Endpoint
 
@@ -19,6 +19,8 @@ npm# Contrato API - Simulación Previsional
 | `voluntaryContribution.startAge` | `number` | Sí | API/DB | `>= 0` |
 | `voluntaryContribution.endAge` | `number` | Sí | API/DB | `>= startAge` y `<= mandatoryContribution.endAge` |
 | `voluntaryContribution.monthlyAmount` | `number` | Sí | **Ingreso manual** | `>= 0` |
+| `solidary.mrsValue` | `number \| null` | No | API/DB | `>= 0` si está presente |
+| `solidary.matriculationDate` | `string (YYYY-MM-DD) \| null` | No | API/DB | fecha ISO válida si está presente |
 | `beneficiaries` | `array` | Sí | API/DB | mínimo `1`, máximo `56` (proceso exacto hasta `12`) |
 | `beneficiaries[].type` | `"T" \| "C" \| "H"` | Sí | API/DB | 1 solo titular `T` |
 | `beneficiaries[].sex` | `1 \| 2` | Sí | API/DB | catálogo fijo |
@@ -37,6 +39,8 @@ npm# Contrato API - Simulación Previsional
   "voluntaryContribution.startAge": { "source": "API_DB", "required": true },
   "voluntaryContribution.endAge": { "source": "API_DB", "required": true },
   "voluntaryContribution.monthlyAmount": { "source": "MANUAL_INPUT", "required": true },
+  "solidary.mrsValue": { "source": "API_DB", "required": false },
+  "solidary.matriculationDate": { "source": "API_DB", "required": false },
   "beneficiaries[].type": { "source": "API_DB", "required": true },
   "beneficiaries[].sex": { "source": "API_DB", "required": true },
   "beneficiaries[].birthDate": { "source": "API_DB", "required": true },
@@ -60,6 +64,10 @@ npm# Contrato API - Simulación Previsional
     "endAge": 65,
     "monthlyAmount": 15000
   },
+  "solidary": {
+    "mrsValue": 150000,
+    "matriculationDate": "1984-10-11"
+  },
   "beneficiaries": [
     {
       "type": "T",
@@ -82,7 +90,20 @@ npm# Contrato API - Simulación Previsional
 ```json
 {
   "ppuu": 180.7791975865581,
+  "capitalizationBenefit": 35267.44764948587,
   "projectedBenefit": 35267.44764948587,
+  "solidaryBenefit": 120000,
+  "totalProjectedBenefit": 155267.44764948587,
+  "solidaryStatus": {
+    "code": "APPLIED_PROPORTIONAL",
+    "message": "Se aplicó componente solidario proporcional según años de aporte.",
+    "eligible": true,
+    "mrsValue": 150000,
+    "contributionYears": 30,
+    "requiredYears": 35,
+    "ageAtRetirement": 65,
+    "percentageApplied": 0.8571428571
+  },
   "finalBalance": 6375620.886987179,
   "retirementDate": "2031-05-19",
   "counts": {
@@ -146,3 +167,10 @@ npm# Contrato API - Simulación Previsional
   "details": "mensaje interno"
 }
 ```
+
+## Notas de compatibilidad
+
+- `projectedBenefit` se mantiene por compatibilidad y representa el componente de capitalización.
+- `totalProjectedBenefit` representa el haber total (`capitalizationBenefit + solidaryBenefit`).
+- Si faltan `MRS` o `fechaMatriculacion`, la simulación de capitalización sigue vigente y PBS devuelve `0` con estado `NOT_SIMULABLE_MISSING_DATA`.
+- Régimen transicional: no implementado en esta versión (pendiente futura actualización).

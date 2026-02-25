@@ -14,6 +14,11 @@ describe("simulation parity", () => {
     expect(result.ppuu).toBeCloseTo(expectedPpuu, 10);
     expect(result.finalBalance).toBeCloseTo(expectedFinalBalance, 8);
     expect(result.projectedBenefit).toBeCloseTo(expectedProjectedBenefit, 10);
+    expect(result.capitalizationBenefit).toBeCloseTo(result.projectedBenefit, 10);
+    expect(result.totalProjectedBenefit).toBeCloseTo(
+      result.capitalizationBenefit + result.solidaryBenefit,
+      10
+    );
     expect(result.retirementDate).toBe("2031-05-19");
     expect(result.counts.n).toBe(2);
     expect(result.counts.spouses).toBe(1);

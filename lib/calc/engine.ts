@@ -13,12 +13,22 @@ import {
   roundAgeYearsBy365_25,
   toIsoDate
 } from "@/lib/calc/date-utils";
-import type { AgeTraceItem, SimulationInput, SimulationResult } from "@/lib/types/simulation";
+import type {
+  AgeTraceItem,
+  SimulationInput,
+  SimulationResult,
+  SolidaryStatus
+} from "@/lib/types/simulation";
 import { canonicalizeBeneficiaries } from "@/lib/validation/simulation-input";
 
 const INTEREST_RATE = 1.04;
 const XMIN_FIXED = technicalMetadata.xminFixed;
 const LI_REFERENCE_AGE = 252;
+const PBS_BASE_MRS_MULTIPLIER = 78;
+const PBS_MINIMUM_AGE = 65;
+const PBS_MINIMUM_YEARS = 20;
+const PBS_FULL_YEARS = 35;
+const PBS_INCREMENT_CAP_YEARS = 45;
 
 interface InternalBeneficiary {
   ageMonth: number;
@@ -108,11 +118,24 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   }
 
   const projectedBenefit = ppuu === 0 ? 0 : finalBalance / ppuu;
+  const solidary = computeSolidaryBenefit({
+    calculationDate: input.calculationDate,
+    retirementAge: input.mandatoryContribution.endAge,
+    titularBirthDate: titular?.birthDate ?? null,
+    mrsValue: input.solidary?.mrsValue ?? null,
+    matriculationDate: input.solidary?.matriculationDate ?? null
+  });
+  const capitalizationBenefit = projectedBenefit;
+  const totalProjectedBenefit = capitalizationBenefit + solidary.solidaryBenefit;
   const hoja2Like = buildHoja2AuxTrace();
 
   return {
     ppuu,
+    capitalizationBenefit,
     projectedBenefit,
+    solidaryBenefit: solidary.solidaryBenefit,
+    totalProjectedBenefit,
+    solidaryStatus: solidary.status,
     finalBalance,
     retirementDate: toIsoDate(retirementDate),
     counts: {
@@ -159,6 +182,187 @@ function computeFinalBalance(args: {
 
   const secondTerm = lookupFactor * args.bov + voluntaryAccumulated;
   return accumulatedMandatoryBase + secondTerm;
+}
+
+export function computeSolidaryBenefit(args: {
+  calculationDate: string;
+  retirementAge: number;
+  titularBirthDate: string | null;
+  mrsValue: number | null | undefined;
+  matriculationDate: string | null | undefined;
+}): {
+  solidaryBenefit: number;
+  status: SolidaryStatus;
+} {
+  const mrsValue = toNullableFiniteNumber(args.mrsValue);
+  const matriculationDate = typeof args.matriculationDate === "string" ? args.matriculationDate : null;
+
+  if (mrsValue === null && !matriculationDate) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_SIMULABLE_MISSING_DATA",
+        message:
+          "No se puede simular el componente solidario porque faltan MRS y fecha de matriculación.",
+        eligible: false,
+        mrsValue: null,
+        contributionYears: null,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement: null,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  if (mrsValue === null || !matriculationDate) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_SIMULABLE_MISSING_DATA",
+        message:
+          "No se puede simular el componente solidario porque faltan datos obligatorios (MRS o fecha de matriculación).",
+        eligible: false,
+        mrsValue,
+        contributionYears: null,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement: null,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  if (!args.titularBirthDate) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_SIMULABLE_INVALID_DATA",
+        message: "No se puede simular el componente solidario porque no se encontró titular válido.",
+        eligible: false,
+        mrsValue,
+        contributionYears: null,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement: null,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  const calculationDate = parseIsoDateStrict(args.calculationDate);
+  const titularBirthDate = parseIsoDateStrict(args.titularBirthDate);
+  const matriculation = parseIsoDateStrict(matriculationDate);
+
+  if (!calculationDate || !titularBirthDate || !matriculation) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_SIMULABLE_INVALID_DATA",
+        message:
+          "No se puede simular el componente solidario porque se recibieron fechas inválidas.",
+        eligible: false,
+        mrsValue,
+        contributionYears: null,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement: null,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  const selectedRetirementAge = Math.max(0, Math.trunc(args.retirementAge));
+  const retirementDateForPbs = maxDate(
+    calculationDate,
+    addYears(titularBirthDate, selectedRetirementAge)
+  );
+  const ageAtRetirement = diffWholeYears(titularBirthDate, retirementDateForPbs);
+  const contributionYears = diffWholeYears(matriculation, retirementDateForPbs);
+
+  if (ageAtRetirement < PBS_MINIMUM_AGE) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_ELIGIBLE_AGE",
+        message: "El afiliado no cumple la edad mínima para componente solidario (65 años).",
+        eligible: false,
+        mrsValue,
+        contributionYears,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  if (contributionYears < PBS_MINIMUM_YEARS) {
+    return {
+      solidaryBenefit: 0,
+      status: buildSolidaryStatus({
+        code: "NOT_ELIGIBLE_MIN_CONTRIBUTION_YEARS",
+        message:
+          "El afiliado no cumple el mínimo de 20 años de aporte para el componente solidario.",
+        eligible: false,
+        mrsValue,
+        contributionYears,
+        requiredYears: PBS_MINIMUM_YEARS,
+        ageAtRetirement,
+        percentageApplied: 0
+      })
+    };
+  }
+
+  const baseBenefit = PBS_BASE_MRS_MULTIPLIER * mrsValue;
+
+  if (contributionYears < PBS_FULL_YEARS) {
+    const percentageApplied = contributionYears / PBS_FULL_YEARS;
+    return {
+      solidaryBenefit: baseBenefit * percentageApplied,
+      status: buildSolidaryStatus({
+        code: "APPLIED_PROPORTIONAL",
+        message: "Se aplicó componente solidario proporcional según años de aporte.",
+        eligible: true,
+        mrsValue,
+        contributionYears,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement,
+        percentageApplied
+      })
+    };
+  }
+
+  if (contributionYears === PBS_FULL_YEARS) {
+    return {
+      solidaryBenefit: baseBenefit,
+      status: buildSolidaryStatus({
+        code: "APPLIED_FULL",
+        message: "Se aplicó componente solidario completo (100%).",
+        eligible: true,
+        mrsValue,
+        contributionYears,
+        requiredYears: PBS_FULL_YEARS,
+        ageAtRetirement,
+        percentageApplied: 1
+      })
+    };
+  }
+
+  const cappedContributionYears = Math.min(contributionYears, PBS_INCREMENT_CAP_YEARS);
+  const extraYears = Math.max(0, cappedContributionYears - PBS_FULL_YEARS);
+  const percentageApplied = 1 + extraYears * 0.01;
+
+  // Pendiente para futura versión: incorporar lógica específica de régimen transicional.
+  return {
+    solidaryBenefit: baseBenefit * percentageApplied,
+    status: buildSolidaryStatus({
+      code: "APPLIED_INCREMENTED",
+      message:
+        "Se aplicó incremento del componente solidario por años de aporte superiores al tramo completo.",
+      eligible: true,
+      mrsValue,
+      contributionYears,
+      requiredYears: PBS_FULL_YEARS,
+      ageAtRetirement,
+      percentageApplied
+    })
+  };
 }
 
 function computePpu(context: PpuContext, tMax: number): number {
@@ -390,3 +594,54 @@ function buildHoja2AuxTrace() {
     rows
   };
 }
+
+function toNullableFiniteNumber(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function buildSolidaryStatus(status: SolidaryStatus): SolidaryStatus {
+  return status;
+}
+
+function parseIsoDateStrict(isoDate: string): Date | null {
+  if (!ISO_DATE_REGEX.test(isoDate)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = isoDate.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function diffWholeYears(start: Date, end: Date): number {
+  let years = end.getUTCFullYear() - start.getUTCFullYear();
+  const monthDiff = end.getUTCMonth() - start.getUTCMonth();
+  const dayDiff = end.getUTCDate() - start.getUTCDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    years -= 1;
+  }
+
+  return Math.max(0, years);
+}
+
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;

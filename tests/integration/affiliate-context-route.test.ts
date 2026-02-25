@@ -96,9 +96,82 @@ describe("GET /api/v1/affiliates/me/simulation-context", () => {
     expect(response.status).toBe(200);
     expect(body.funds.total).toBe(3481733.27);
     expect(body.bov).toBe(200832.23);
+    expect(body.solidary.sourceStatus).toBe("MISSING_BOTH");
     expect(body.affiliate.fullName).toBe("Afiliado");
     expect(body.beneficiaries[0].fullName).toBe("Titular");
     expect(body.beneficiaries).toHaveLength(2);
+  });
+
+  it("mapea el formato success/data con datos solidarios", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          message: "ok",
+          data: {
+            calculationDate: "2026-02-19",
+            titular: {
+              nombre: "Claudia Monica",
+              apellido: "Ferrazzi",
+              legajo: "CP154900",
+              sexo: "F",
+              fechaNacimiento: "1958-10-11",
+              fechaMatriculacion: "1984-10-11",
+              invalido: false
+            },
+            grupoFamiliar: [
+              {
+                nombre: "Carlos Humberto",
+                apellido: "Muzzio Labianca",
+                relacion: "CONYUGE",
+                sexo: "M",
+                fechaNacimiento: "1957-03-11",
+                invalido: false
+              }
+            ],
+            cuentaCapitalizacion: {
+              aportesObligatorios: 7087732.79,
+              aportesVoluntarios: 1205389.38,
+              saldoTotal: 8293122.17
+            },
+            valorVAR: 200000,
+            valorMRS: 150000,
+            mandatoryContribution: {
+              startAge: 44,
+              endAge: 65
+            },
+            voluntaryContribution: {
+              startAge: 44,
+              endAge: 65
+            }
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new Request("http://localhost/api/v1/affiliates/me/simulation-context", {
+      method: "GET",
+      headers: {
+        cookie: buildSessionCookieHeader()
+      }
+    });
+
+    const response = await getSimulationContext(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.affiliate.fullName).toBe("Claudia Monica Ferrazzi");
+    expect(body.funds.total).toBe(8293122.17);
+    expect(body.solidary.mrsValue).toBe(150000);
+    expect(body.solidary.matriculationDate).toBe("1984-10-11");
+    expect(body.solidary.sourceStatus).toBe("READY");
   });
 
   it("responde 422 cuando faltan datos obligatorios", async () => {

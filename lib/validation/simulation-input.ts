@@ -28,6 +28,16 @@ export const simulationInputSchema = z
       endAge: z.number().finite().nonnegative(),
       monthlyAmount: z.number().finite().nonnegative()
     }),
+    solidary: z
+      .object({
+        mrsValue: z.number().finite().nonnegative().nullable().optional(),
+        matriculationDate: z
+          .string()
+          .regex(isoDateRegex, "matriculationDate debe tener formato YYYY-MM-DD")
+          .nullable()
+          .optional()
+      })
+      .optional(),
     beneficiaries: z.array(beneficiarySchema).min(1).max(56)
   })
   .superRefine((value, ctx) => {
