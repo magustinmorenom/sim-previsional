@@ -18,6 +18,7 @@ interface RemoteRequestOptions {
   method: "GET" | "POST";
   body?: unknown;
   query?: Record<string, string>;
+  baseUrl?: string;
 }
 
 export class RemoteApiError extends Error {
@@ -49,15 +50,59 @@ function getBaseUrl(): string {
   return value || getDefaultFakeApiBaseUrl();
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const token = process.env.REMOTE_API_BEARER_TOKEN?.trim();
-  if (!token) {
-    return {};
+function getAffiliateContextBaseUrl(): string {
+  const explicit = process.env.REMOTE_AFFILIATE_CONTEXT_BASE_URL?.trim();
+  if (explicit) {
+    return explicit;
   }
 
-  return {
-    Authorization: `Bearer ${token}`
-  };
+  const remoteBase = process.env.REMOTE_API_BASE_URL?.trim();
+  if (remoteBase) {
+    return remoteBase;
+  }
+
+  const publicBase = process.env.PRESTAMOS_API_BASE_URL?.trim();
+  if (publicBase) {
+    return publicBase;
+  }
+
+  return getDefaultFakeApiBaseUrl();
+}
+
+function getAffiliateContextPath(): string {
+  const explicit = process.env.REMOTE_AFFILIATE_CONTEXT_PATH?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const remoteBase = process.env.REMOTE_API_BASE_URL?.trim();
+  if (remoteBase) {
+    return "affiliates/simulation-context";
+  }
+
+  const publicBase = process.env.PRESTAMOS_API_BASE_URL?.trim();
+  if (publicBase) {
+    return "jubilacion/info";
+  }
+
+  return "affiliates/simulation-context";
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const apiKey = process.env.API_KEY_CPS?.trim() || process.env.PRESTAMOS_API_KEY?.trim();
+  const token = process.env.REMOTE_API_BEARER_TOKEN?.trim();
+
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey;
+  }
+
+  return headers;
 }
 
 function pickErrorMessage(payload: unknown, fallback: string): string {
@@ -93,6 +138,10 @@ function mapRemoteError(status: number, payload: unknown): RemoteApiError {
 
   if (status === 429) {
     return new RemoteApiError(429, "REMOTE_RATE_LIMIT", message, payload);
+  }
+
+  if (status === 404) {
+    return new RemoteApiError(404, "REMOTE_NOT_FOUND", message, payload);
   }
 
   return new RemoteApiError(502, "REMOTE_UPSTREAM_FAILURE", message, payload);
@@ -139,7 +188,7 @@ function normalizeChallengeResponse(payload: unknown): AuthChallengeResponse {
 }
 
 async function requestRemote(path: string, options: RemoteRequestOptions): Promise<unknown> {
-  const baseUrl = getBaseUrl();
+  const baseUrl = options.baseUrl?.trim() || getBaseUrl();
   const url = new URL(path, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
 
   if (options.query) {
@@ -217,8 +266,9 @@ export async function verifyRemoteAuthCode(payload: CreateSessionRequest): Promi
 export async function fetchRemoteAffiliateSimulationContext(payload: {
   email: string;
 }): Promise<unknown> {
-  return requestRemote("affiliates/simulation-context", {
+  return requestRemote(getAffiliateContextPath(), {
     method: "GET",
+    baseUrl: getAffiliateContextBaseUrl(),
     query: {
       email: payload.email
     }
