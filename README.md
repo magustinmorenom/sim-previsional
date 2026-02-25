@@ -23,6 +23,7 @@ Migración del archivo Excel/VBA `proyectador de beneficios CEER vf 2025.xlsm` a
 - Exportación PDF de resultados.
 - Módulo de simulación de préstamos (`sim-guion-prestamos`) con:
   - UI privada avanzada en `/app/simuladores/prestamos` (feature flag `ENABLE_PRESTAMOS_UI_V2`)
+  - Selector de modo `API` / `Isolated` (default configurable con `PRESTAMOS_SIMULATOR_MODE`)
   - BFF interno `/api/v1/public/prestamos/*`
   - Mock API con JSON server para desarrollo local (`npm run mock:prestamos`)
 
