@@ -573,6 +573,30 @@ function mapInfoPayloadToCanonical(
     readString(dataRecord, ["calculationDate", "fechaCalculo"]) ??
     toIsoDateToday();
 
+  const mrsValue = readNumber(dataRecord, ["valorMRS", "mrs", "mrsValue"]);
+  const matriculationDate =
+    readString(titularRecord, ["fechaMatriculacion", "matriculationDate"]) ?? null;
+
+  const mandatoryStartAge = readNumber(dataRecord, [
+    "mandatoryContribution.startAge",
+    "mandatoryContributionStartAge",
+    "titular.edadInicioAportesObligatorios"
+  ]);
+  const mandatoryEndAge = readNumber(dataRecord, [
+    "mandatoryContribution.endAge",
+    "mandatoryContributionEndAge",
+    "titular.edadJubilacion"
+  ]);
+  const voluntaryStartAge = readNumber(dataRecord, [
+    "voluntaryContribution.startAge",
+    "voluntaryContributionStartAge",
+    "titular.edadInicioAportesVoluntarios"
+  ]);
+  const voluntaryEndAge = readNumber(dataRecord, [
+    "voluntaryContribution.endAge",
+    "voluntaryContributionEndAge"
+  ]);
+
   return {
     calculationDate,
     affiliate: {
@@ -585,7 +609,31 @@ function mapInfoPayloadToCanonical(
       ...(voluntaryFunds !== null ? { voluntary: voluntaryFunds } : {})
     },
     bov,
-    beneficiaries
+    beneficiaries,
+    ...(mrsValue !== null || matriculationDate !== null
+      ? {
+          solidary: {
+            ...(mrsValue !== null ? { mrsValue } : {}),
+            ...(matriculationDate ? { matriculationDate } : {})
+          }
+        }
+      : {}),
+    ...(mandatoryStartAge !== null || mandatoryEndAge !== null
+      ? {
+          mandatoryContribution: {
+            ...(mandatoryStartAge !== null ? { startAge: mandatoryStartAge } : {}),
+            ...(mandatoryEndAge !== null ? { endAge: mandatoryEndAge } : {})
+          }
+        }
+      : {}),
+    ...(voluntaryStartAge !== null || voluntaryEndAge !== null
+      ? {
+          voluntaryContribution: {
+            ...(voluntaryStartAge !== null ? { startAge: voluntaryStartAge } : {}),
+            ...(voluntaryEndAge !== null ? { endAge: voluntaryEndAge } : {})
+          }
+        }
+      : {})
   };
 }
 
