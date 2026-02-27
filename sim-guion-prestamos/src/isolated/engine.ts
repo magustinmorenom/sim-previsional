@@ -346,6 +346,10 @@ export function getLineaByIdSafe(lineaId: number): IsolatedPrestamoLinea | null 
   return getLineaById(lineaId);
 }
 
+export function resolveTeaPublic(linea: IsolatedPrestamoLinea, tipoAfiliado: AffiliateType, modalidadTasa: RateMode, cuotas: number): number {
+  return resolveTea(linea, tipoAfiliado, modalidadTasa, cuotas);
+}
+
 export function simulateIsolatedPrestamo(input: IsolatedSimulationInput):
   | {
     ok: true;

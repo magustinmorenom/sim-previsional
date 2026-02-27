@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CpsChatbotPanel } from "@/app/_features/chatbot/cps-chatbot-panel";
 
 const CHAT_OPEN_STORAGE_KEY = "anx-chat-open";
+const CHAT_OPEN_EVENT = "anx:chat-open";
 const DESKTOP_BREAKPOINT = 981;
 
 interface WorkspaceWithChatProps {
@@ -51,6 +52,28 @@ export function WorkspaceWithChat({ children }: WorkspaceWithChatProps) {
 
     window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, chatOpen ? "1" : "0");
   }, [chatOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const openChatFromEvent = () => {
+      setChatOpen((current) => {
+        if (current) {
+          return current;
+        }
+
+        window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, "1");
+        return true;
+      });
+    };
+
+    window.addEventListener(CHAT_OPEN_EVENT, openChatFromEvent);
+    return () => {
+      window.removeEventListener(CHAT_OPEN_EVENT, openChatFromEvent);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || isMobile || !chatOpen) {

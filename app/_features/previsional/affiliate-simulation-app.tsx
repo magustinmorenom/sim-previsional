@@ -577,7 +577,7 @@ export default function HomePage() {
                   <article className="af-card af-side-card">
                     <div className="af-mini-label">Situación actual</div>
                     <div className="af-total-box">
-                      <span>Total acumulado</span>
+                      <span>Tus fondos actuales acumulados</span>
                       <strong>{formatCurrency(context.funds.total)}</strong>
                     </div>
                     <div className="af-side-kpi-grid">
@@ -604,7 +604,7 @@ export default function HomePage() {
 
                   {titular && (
                     <article className="af-card af-side-card">
-                      <div className="af-mini-label">Titular</div>
+                      <div className="af-mini-label">Tus datos personales</div>
                       <div className="af-holder-name">{titular.fullName}</div>
                       <div className="af-side-kpi-grid af-side-kpi-grid-3">
                         <article className="af-side-kpi">
@@ -648,14 +648,14 @@ export default function HomePage() {
                   <article className="af-card af-control-panel">
                     <div className="af-control-heading">
                       <div>
-                        <h2>Variables editables</h2>
-                        <p>Personalizá tu escenario y ejecutá el cálculo.</p>
+                        <h2>Completá para Simular tu Jubilación</h2>
+              
                       </div>
                     </div>
 
                     <div className="af-form af-form-compact">
                       <label className="af-field af-editable-group">
-                        <span className="af-editable-label">Aporte voluntario mensual</span>
+                        <span className="af-editable-label"><span className="af-step-badge">1</span>¿Cuánto aportarías a tu Fondo Voluntario por mes?</span>
                         <div className="af-currency-input af-currency-input-dark">
                           <span>$</span>
                           <input
@@ -690,7 +690,7 @@ export default function HomePage() {
 
                       <div className="af-editable-age-row af-editable-age-row-compact">
                         <label className="af-field af-editable-group af-editable-retirement-age-field">
-                          <span className="af-editable-label">Edad de jubilación</span>
+                          <span className="af-editable-label"><span className="af-step-badge">2</span>¿A que edad esperas jubilarte?</span>
                           <div
                             className="af-age-inline-picker af-age-inline-picker-compact"
                             role="group"
@@ -715,7 +715,7 @@ export default function HomePage() {
                         </label>
 
                         <label className="af-field af-editable-group af-editable-end-age-field">
-                          <span className="af-editable-label">Edad fin aportes</span>
+                          <span className="af-editable-label"><span className="af-step-badge">3</span>Edad fin aportes voluntarios</span>
                           <div className="af-currency-input af-currency-input-dark af-select-input-dark">
                             <select
                               value={formState.voluntaryEndAge}
@@ -779,49 +779,18 @@ export default function HomePage() {
                     </article>
                   ) : (
                     <>
-                      <section className="af-main-kpis af-main-kpis-triple">
-                        <article className="af-card af-main-kpi-card af-main-kpi-primary">
-                          <span>Haber total proyectado</span>
-                          <strong>{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Componente capitalización</span>
-                          <strong>{formatCurrency(resolveCapitalizationBenefit(result))}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Componente fondo solidario</span>
-                          <strong>{formatCurrency(resolveSolidaryBenefit(result))}</strong>
-                        </article>
-                      </section>
+                      <article className="af-jubilacion-hero">
+                        <h3>Tu jubilación en el año {extractYear(result.retirementDate)} será</h3>
+                        <strong className="af-jubilacion-hero-amount">{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
+                        <div className="af-jubilacion-hero-breakdown">
+                          <span>Capitalización: {formatCurrency(resolveCapitalizationBenefit(result))}</span>
+                          <span>Fondo solidario: {formatCurrency(resolveSolidaryBenefit(result))}</span>
+                        </div>
+                      </article>
 
-                      <section className="af-main-kpis af-main-kpis-secondary af-main-kpis-triple">
-                        <article className="af-card af-main-kpi-card">
-                          <span>Capital final estimado</span>
-                          <strong>{formatCurrency(result.finalBalance)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>PPUU</span>
-                          <strong>{formatNumber(result.ppuu, 2)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Fecha de jubilación</span>
-                          <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
-                        </article>
-                      </section>
-
-                      <div
-                        className={`af-status ${
-                          resolveSolidaryStatus(result).eligible
-                            ? "af-status-info"
-                            : "af-status-warning"
-                        }`}
-                      >
-                        PBS: {resolveSolidaryStatus(result).message}
-                      </div>
-
-                      <article className="af-card af-chart-main-card">
+                      <article className="af-card af-chart-main-card af-chart-fullwidth">
                         <div className="af-chart-header">
-                          <h2>Evolución What-If</h2>
+                          <h2>Mirá cómo aumenta tu jubilación si hacés aportes voluntarios</h2>
                           <div className="af-whatif-meta">
                             <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
                             <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
@@ -1114,6 +1083,15 @@ function formatIsoToDisplay(iso: string): string {
 
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
+}
+
+function extractYear(iso: string): string {
+  const match = ISO_DATE_REGEX.exec(iso);
+  if (!match) {
+    return iso;
+  }
+
+  return iso.split("-")[0];
 }
 
 function calculateAgeFromIso(iso: string): number | null {

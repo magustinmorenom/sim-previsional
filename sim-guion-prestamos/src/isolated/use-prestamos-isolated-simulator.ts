@@ -7,6 +7,7 @@ import {
   getIsolatedBootstrap,
   getLineaByIdSafe,
   getRateModeLabels,
+  resolveTeaPublic,
   simulateIsolatedPrestamo,
   validateIsolatedInput
 } from "@/sim-guion-prestamos/src/isolated/engine";
@@ -222,6 +223,27 @@ export function usePrestamosIsolatedSimulator() {
 
   const cuotasConsumo = selectedLinea?.plazosDisponibles ?? [];
 
+  const financialInfo = useMemo(() => {
+    if (!selectedLinea) {
+      return null;
+    }
+
+    const cuotas = parseInteger(form.cantidadCuotas);
+    const effectiveCuotas = Number.isFinite(cuotas) ? cuotas : 12;
+    const tna = resolveTeaPublic(selectedLinea, form.tipoAfiliado, form.modalidadTasa, effectiveCuotas);
+    const tem = Math.round((tna / 12) * 10000) / 10000;
+
+    return {
+      tna,
+      tem,
+      sistema: selectedLinea.amortizacionSistema,
+      fondoQuebranto: selectedLinea.costos.fondoQuebrantoPorcentaje,
+      gastosAdmin: selectedLinea.costos.gastosAdminPorcentaje,
+      sellado: selectedLinea.costos.selladoPorcentaje,
+      seguroVida: selectedLinea.costos.seguroVidaPorcentaje
+    };
+  }, [selectedLinea, form.tipoAfiliado, form.modalidadTasa, form.cantidadCuotas]);
+
   return {
     generatedAt: bootstrap.generadoEn,
     fuente: bootstrap.fuente,
@@ -238,11 +260,10 @@ export function usePrestamosIsolatedSimulator() {
     affiliateLabels,
     rateModeLabels,
     maxCuotasPermitidas: contextValidation.maxCuotasPermitidas,
+    financialInfo,
     updateLinea,
     updateMonto,
     updateCuotas,
-    updateEdad,
-    updateAntiguedad,
     updateIngreso,
     updateTipoAfiliado,
     updateModalidadTasa,
