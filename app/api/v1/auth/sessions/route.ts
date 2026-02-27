@@ -3,10 +3,8 @@ import { z } from "zod";
 import type { CreateSessionRequest } from "@/lib/types/auth";
 import {
   fetchRemoteAffiliateSimulationContext,
-  verifyRemoteAuthCode,
   RemoteApiError
 } from "@/lib/server/remote-api-client";
-import { isOtpBypassMode } from "@/lib/server/otp-delivery";
 import { verifyBypassOtpChallenge } from "@/lib/server/otp-bypass-store";
 import {
   clearAuthChallengeCookie,
@@ -216,38 +214,33 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const updatedChallengeState = increaseChallengeAttempts(challengeState);
-    const bypassMode = isOtpBypassMode();
 
     try {
-      if (bypassMode) {
-        const bypassValidation = verifyBypassOtpChallenge({
-          challengeId: parsed.data.challengeId,
-          email: challengeState.email,
-          code: parsed.data.code
-        });
+      const otpValidation = verifyBypassOtpChallenge({
+        challengeId: parsed.data.challengeId,
+        email: challengeState.email,
+        code: parsed.data.code
+      });
 
-        if (!bypassValidation.ok) {
-          return errorResponse(
-            bypassValidation.status,
-            {
-              error: bypassValidation.error,
-              code: bypassValidation.code
-            },
-            (response) => {
-              if (
-                bypassValidation.status === 410 ||
-                bypassValidation.code === "OTP_BYPASS_CHALLENGE_NOT_FOUND"
-              ) {
-                clearAuthChallengeCookie(response);
-                return;
-              }
-
-              setAuthChallengeCookie(response, updatedChallengeState);
+      if (!otpValidation.ok) {
+        return errorResponse(
+          otpValidation.status,
+          {
+            error: otpValidation.error,
+            code: otpValidation.code
+          },
+          (response) => {
+            if (
+              otpValidation.status === 410 ||
+              otpValidation.code === "OTP_BYPASS_CHALLENGE_NOT_FOUND"
+            ) {
+              clearAuthChallengeCookie(response);
+              return;
             }
-          );
-        }
-      } else {
-        await verifyRemoteAuthCode(parsed.data);
+
+            setAuthChallengeCookie(response, updatedChallengeState);
+          }
+        );
       }
 
       const identity = await resolveAffiliateIdentity(challengeState.email);

@@ -36,10 +36,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!affiliate) {
       return NextResponse.json(
         {
-          error: "El correo no está habilitado en la API fake.",
-          code: "FAKE_AUTH_EMAIL_NOT_ALLOWED"
+          error: "Este correo no está registrado en el CPS, quizás tengas registrada otra dirección.",
+          code: "FAKE_AUTH_EMAIL_NOT_FOUND"
         },
-        { status: 401 }
+        { status: 404 }
       );
     }
 

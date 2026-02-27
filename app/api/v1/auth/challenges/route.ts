@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { AuthChallengeRequest } from "@/lib/types/auth";
-import {
-  createRemoteAuthChallenge,
-  RemoteApiError
-} from "@/lib/server/remote-api-client";
-import { isOtpBypassEmailAllowed, isOtpBypassMode } from "@/lib/server/otp-delivery";
+import { fetchRemoteAffiliateSimulationContext } from "@/lib/server/remote-api-client";
+import { isOtpBypassMode } from "@/lib/server/otp-delivery";
 import { createBypassOtpChallenge } from "@/lib/server/otp-bypass-store";
+import { sendOtpByEmail } from "@/lib/server/fake/email-sender";
 import { createChallengeState, setAuthChallengeCookie } from "@/lib/server/session";
 
 export const runtime = "nodejs";
@@ -14,28 +12,6 @@ export const runtime = "nodejs";
 const challengeRequestSchema = z.object({
   email: z.string().email()
 });
-
-function buildRemoteErrorResponse(error: RemoteApiError): NextResponse {
-  if (error.status === 400 || error.status === 401 || error.status === 429) {
-    return NextResponse.json(
-      {
-        error: error.message,
-        code: error.code,
-        details: error.details
-      },
-      { status: error.status }
-    );
-  }
-
-  return NextResponse.json(
-    {
-      error: "No fue posible iniciar el desafío del código de un solo uso.",
-      code: error.code,
-      details: error.details
-    },
-    { status: 502 }
-  );
-}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -54,58 +30,66 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const normalizedEmail = parsed.data.email.trim().toLowerCase();
 
-    if (isOtpBypassMode()) {
-      if (!isOtpBypassEmailAllowed(normalizedEmail)) {
-        return NextResponse.json(
-          {
-            error: "El correo no está habilitado para el modo bypass del código de un solo uso.",
-            code: "OTP_BYPASS_EMAIL_NOT_ALLOWED"
-          },
-          { status: 403 }
-        );
-      }
+    try {
+      await fetchRemoteAffiliateSimulationContext({ email: normalizedEmail });
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Este correo no está registrado en el CPS, quizás tengas registrada otra dirección.",
+          code: "EMAIL_NOT_REGISTERED"
+        },
+        { status: 404 }
+      );
+    }
 
-      const bypassChallenge = createBypassOtpChallenge({
-        email: normalizedEmail
+    const otpChallenge = createBypassOtpChallenge({ email: normalizedEmail });
+    const bypassMode = isOtpBypassMode();
+
+    if (!bypassMode) {
+      const delivery = await sendOtpByEmail({
+        to: normalizedEmail,
+        code: otpChallenge.code,
+        challengeId: otpChallenge.challengeId
       });
+
       const response = NextResponse.json(
         {
-          challengeId: bypassChallenge.challengeId,
-          expiresInSeconds: bypassChallenge.expiresInSeconds,
-          resendAvailableInSeconds: bypassChallenge.resendAvailableInSeconds,
-          devMode: true,
-          devOtpCode: bypassChallenge.code
+          challengeId: otpChallenge.challengeId,
+          expiresInSeconds: otpChallenge.expiresInSeconds,
+          resendAvailableInSeconds: otpChallenge.resendAvailableInSeconds,
+          ...(delivery.devMode ? { devMode: true, devOtpCode: otpChallenge.code } : {})
         },
         { status: 200 }
       );
 
       const challengeState = createChallengeState({
-        challengeId: bypassChallenge.challengeId,
+        challengeId: otpChallenge.challengeId,
         email: normalizedEmail,
-        expiresInSeconds: bypassChallenge.expiresInSeconds
+        expiresInSeconds: otpChallenge.expiresInSeconds
       });
       setAuthChallengeCookie(response, challengeState);
       return response;
     }
 
-    const challenge = await createRemoteAuthChallenge({
-      email: normalizedEmail
-    });
-    const response = NextResponse.json(challenge, { status: 200 });
+    const response = NextResponse.json(
+      {
+        challengeId: otpChallenge.challengeId,
+        expiresInSeconds: otpChallenge.expiresInSeconds,
+        resendAvailableInSeconds: otpChallenge.resendAvailableInSeconds,
+        devMode: true,
+        devOtpCode: otpChallenge.code
+      },
+      { status: 200 }
+    );
 
     const challengeState = createChallengeState({
-      challengeId: challenge.challengeId,
+      challengeId: otpChallenge.challengeId,
       email: normalizedEmail,
-      expiresInSeconds: challenge.expiresInSeconds
+      expiresInSeconds: otpChallenge.expiresInSeconds
     });
     setAuthChallengeCookie(response, challengeState);
-
     return response;
   } catch (error) {
-    if (error instanceof RemoteApiError) {
-      return buildRemoteErrorResponse(error);
-    }
-
     const message = error instanceof Error ? error.message : "Error no controlado";
     return NextResponse.json(
       {
