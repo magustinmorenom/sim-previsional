@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CPS",
+  title: "App CPS",
   description:
     "Sistema de gestión para afiliados con biblioteca documental, procesos, consultas y simuladores"
 };
