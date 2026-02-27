@@ -14,8 +14,7 @@ import type {
 } from "@/lib/types/auth";
 import type {
   SimulationInput,
-  SimulationResult,
-  SolidaryStatus
+  SimulationResult
 } from "@/lib/types/simulation";
 
 const WHAT_IF_STEP = 100000;
@@ -996,31 +995,6 @@ function sanitizeUserError(message: string): string {
   }
 
   return message;
-}
-
-function resolveSolidaryStatus(result: SimulationResult): SolidaryStatus {
-  const fallback: SolidaryStatus = {
-    code: "NOT_SIMULABLE_MISSING_DATA",
-    message:
-      "No se pudo simular el componente solidario porque faltan MRS o fecha de matriculación.",
-    eligible: false,
-    mrsValue: null,
-    contributionYears: null,
-    requiredYears: 35,
-    ageAtRetirement: null,
-    percentageApplied: 0
-  };
-
-  const statusCandidate = (result as unknown as { solidaryStatus?: SolidaryStatus })
-    .solidaryStatus;
-  if (!statusCandidate || typeof statusCandidate !== "object") {
-    return fallback;
-  }
-
-  return {
-    ...fallback,
-    ...statusCandidate
-  };
 }
 
 function resolveCapitalizationBenefit(result: SimulationResult): number {
