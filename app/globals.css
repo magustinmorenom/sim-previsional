@@ -798,6 +798,57 @@ textarea {
   color: #124a8a;
 }
 
+.af-jubilacion-hero {
+  border-radius: 14px;
+  padding: 20px 24px;
+  background: linear-gradient(140deg, #8D2248 0%, #6b1a38 100%);
+  color: #ffffff;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.af-jubilacion-hero h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f5d0de;
+  letter-spacing: 0.02em;
+}
+
+.af-jubilacion-hero-amount {
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.af-jubilacion-hero-breakdown {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.af-jubilacion-hero-breakdown span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f0c2d3;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.af-chart-fullwidth {
+  grid-column: 1 / -1;
+}
+
+.af-chart-fullwidth h2 {
+  font-size: 15px;
+  max-width: 360px;
+}
+
 .af-chart-main-card {
   gap: 10px;
   min-height: 0;

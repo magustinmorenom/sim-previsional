@@ -779,39 +779,18 @@ export default function HomePage() {
                     </article>
                   ) : (
                     <>
-                      <section className="af-main-kpis af-main-kpis-triple">
-                        <article className="af-card af-main-kpi-card af-main-kpi-primary">
-                          <span>Haber total proyectado</span>
-                          <strong>{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Componente capitalización</span>
-                          <strong>{formatCurrency(resolveCapitalizationBenefit(result))}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Componente fondo solidario</span>
-                          <strong>{formatCurrency(resolveSolidaryBenefit(result))}</strong>
-                        </article>
-                      </section>
+                      <article className="af-jubilacion-hero">
+                        <h3>Tu jubilación en el año {extractYear(result.retirementDate)} será</h3>
+                        <strong className="af-jubilacion-hero-amount">{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
+                        <div className="af-jubilacion-hero-breakdown">
+                          <span>Capitalización: {formatCurrency(resolveCapitalizationBenefit(result))}</span>
+                          <span>Fondo solidario: {formatCurrency(resolveSolidaryBenefit(result))}</span>
+                        </div>
+                      </article>
 
-                      <section className="af-main-kpis af-main-kpis-secondary af-main-kpis-triple">
-                        <article className="af-card af-main-kpi-card">
-                          <span>Capital final estimado</span>
-                          <strong>{formatCurrency(result.finalBalance)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>PPUU</span>
-                          <strong>{formatNumber(result.ppuu, 2)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Fecha de jubilación</span>
-                          <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
-                        </article>
-                      </section>
-
-                      <article className="af-card af-chart-main-card">
+                      <article className="af-card af-chart-main-card af-chart-fullwidth">
                         <div className="af-chart-header">
-                          <h2>Evolución What-If</h2>
+                          <h2>Mirá cómo aumenta tu jubilación si hacés aportes voluntarios</h2>
                           <div className="af-whatif-meta">
                             <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
                             <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
@@ -1104,6 +1083,15 @@ function formatIsoToDisplay(iso: string): string {
 
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
+}
+
+function extractYear(iso: string): string {
+  const match = ISO_DATE_REGEX.exec(iso);
+  if (!match) {
+    return iso;
+  }
+
+  return iso.split("-")[0];
 }
 
 function calculateAgeFromIso(iso: string): number | null {
