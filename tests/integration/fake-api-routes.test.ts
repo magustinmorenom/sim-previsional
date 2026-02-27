@@ -79,10 +79,11 @@ describe("fake API routes", () => {
     const bodyOne = await responseOne.json();
 
     expect(responseOne.status).toBe(200);
-    expect(bodyOne.affiliate.email).toBe("nicolasfuentesg06@gmail.com");
-    expect(bodyOne.affiliate.fullName).toBeTruthy();
-    expect(bodyOne.beneficiaries[0].fullName).toBeTruthy();
-    expect(bodyOne.beneficiaries.length).toBeGreaterThan(0);
+    expect(bodyOne.success).toBe(true);
+    expect(bodyOne.data.titular.email).toBe("amoreno@odin.ar");
+    expect(bodyOne.data.titular.nombre).toBeTruthy();
+    expect(bodyOne.data.valorVAR).toBeTypeOf("number");
+    expect(bodyOne.data.valorMRS).toBeTypeOf("number");
 
     const requestTwo = new Request(
       "http://localhost/api/fake/v1/affiliates/simulation-context?email=magustin.morenom@gmail.com",
@@ -94,10 +95,11 @@ describe("fake API routes", () => {
     const bodyTwo = await responseTwo.json();
 
     expect(responseTwo.status).toBe(200);
-    expect(bodyTwo.affiliate.email).toBe("magustin.morenom@gmail.com");
-    expect(bodyTwo.affiliate.fullName).toBeTruthy();
-    expect(bodyTwo.beneficiaries[0].fullName).toBeTruthy();
-    expect(bodyTwo.beneficiaries.length).toBeGreaterThan(0);
+    expect(bodyTwo.success).toBe(true);
+    expect(bodyTwo.data.titular.email).toBe("magustin.morenom@gmail.com");
+    expect(bodyTwo.data.titular.nombre).toBeTruthy();
+    expect(Array.isArray(bodyTwo.data.grupoFamiliar)).toBe(true);
+    expect(bodyTwo.data.cuentaCapitalizacion.saldoTotal).toBeTypeOf("number");
   });
 });
 

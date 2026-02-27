@@ -33,9 +33,18 @@ export interface ChartPoint {
   capitalRestante: number;
 }
 
-export function toChartPoints(cuadro: PrestamoCuadroDeMarchaItem[]): ChartPoint[] {
+interface ChartableItem {
+  numeroCuota?: number;
+  nroCuota?: number;
+  cuota: number;
+  intereses: number;
+  amortizacion: number;
+  capitalRestante: number;
+}
+
+export function toChartPoints(cuadro: ChartableItem[]): ChartPoint[] {
   return cuadro.map((item) => ({
-    nroCuota: item.numeroCuota,
+    nroCuota: item.numeroCuota ?? item.nroCuota ?? 0,
     cuota: item.cuota,
     intereses: item.intereses,
     amortizacion: item.amortizacion,

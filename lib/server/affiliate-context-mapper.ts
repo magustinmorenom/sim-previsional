@@ -1,6 +1,7 @@
 import type {
   AffiliateBeneficiary,
-  AffiliateSimulationContext
+  AffiliateSimulationContext,
+  SolidarySourceStatus
 } from "@/lib/types/affiliate-context";
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -84,6 +85,17 @@ function parseSex(value: unknown): 1 | 2 | null {
     return 2;
   }
 
+  if (typeof value === "string") {
+    const normalized = normalizeValue(value);
+    if (normalized === "M" || normalized === "MASCULINO") {
+      return 1;
+    }
+
+    if (normalized === "F" || normalized === "FEMENINO") {
+      return 2;
+    }
+  }
+
   return null;
 }
 
@@ -96,6 +108,25 @@ function parseInvalid(value: unknown): 0 | 1 | null {
     return 1;
   }
 
+  if (value === true) {
+    return 1;
+  }
+
+  if (value === false) {
+    return 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = normalizeValue(value);
+    if (normalized === "TRUE" || normalized === "SI" || normalized === "S") {
+      return 1;
+    }
+
+    if (normalized === "FALSE" || normalized === "NO" || normalized === "N") {
+      return 0;
+    }
+  }
+
   return null;
 }
 
@@ -104,12 +135,28 @@ function parseType(value: unknown): "T" | "C" | "H" | null {
     return null;
   }
 
-  const normalized = value.toUpperCase();
-  if (normalized === "T" || normalized === "C" || normalized === "H") {
-    return normalized;
+  const normalized = normalizeValue(value);
+  if (normalized === "T" || normalized === "TITULAR") {
+    return "T";
+  }
+
+  if (normalized === "C" || normalized === "CONYUGE" || normalized === "PAREJA") {
+    return "C";
+  }
+
+  if (normalized === "H" || normalized === "HIJO" || normalized === "HIJA") {
+    return "H";
   }
 
   return null;
+}
+
+function normalizeValue(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function nextBeneficiaryOrder(type: "T" | "C" | "H", counters: Record<"C" | "H", number>): number {
@@ -151,6 +198,13 @@ function pickBeneficiaryFullName(
     return directName.trim();
   }
 
+  const nombre = typeof row.nombre === "string" ? row.nombre.trim() : "";
+  const apellido = typeof row.apellido === "string" ? row.apellido.trim() : "";
+  const composed = `${nombre} ${apellido}`.trim();
+  if (composed.length > 0) {
+    return composed;
+  }
+
   return fallbackBeneficiaryName(type, order);
 }
 
@@ -172,25 +226,31 @@ function parseBeneficiaries(
   payload: Record<string, unknown>,
   issues: string[]
 ): AffiliateBeneficiary[] {
-  const raw = readPathValue(payload, "beneficiaries");
-  if (!Array.isArray(raw)) {
-    issues.push("No se recibió beneficiaries como arreglo.");
-    return [];
+  const rawLegacy = readPathValue(payload, "beneficiaries");
+  if (Array.isArray(rawLegacy)) {
+    return parseLegacyBeneficiaries(rawLegacy, issues);
   }
 
-  if (raw.length === 0) {
+  return parseStructuredBeneficiaries(payload, issues);
+}
+
+function parseLegacyBeneficiaries(
+  rawBeneficiaries: unknown[],
+  issues: string[]
+): AffiliateBeneficiary[] {
+  if (rawBeneficiaries.length === 0) {
     issues.push("Debe existir al menos un beneficiario.");
     return [];
   }
 
-  if (raw.length > 56) {
+  if (rawBeneficiaries.length > 56) {
     issues.push("Se recibió más de 56 beneficiarios.");
   }
 
   const beneficiaries: AffiliateBeneficiary[] = [];
   const counters: Record<"C" | "H", number> = { C: 0, H: 0 };
 
-  raw.forEach((item, index) => {
+  rawBeneficiaries.forEach((item, index) => {
     if (!item || typeof item !== "object") {
       issues.push(`Beneficiario #${index + 1} inválido.`);
       return;
@@ -230,6 +290,101 @@ function parseBeneficiaries(
       invalid
     });
   });
+
+  return beneficiaries;
+}
+
+function parseStructuredBeneficiaries(
+  payload: Record<string, unknown>,
+  issues: string[]
+): AffiliateBeneficiary[] {
+  const beneficiaries: AffiliateBeneficiary[] = [];
+  const counters: Record<"C" | "H", number> = { C: 0, H: 0 };
+  const titularRaw = readPathValue(payload, "titular");
+
+  if (!titularRaw || typeof titularRaw !== "object") {
+    issues.push("No se recibió titular válido.");
+    return [];
+  }
+
+  const titularRow = titularRaw as Record<string, unknown>;
+  const titularSex = parseSex(titularRow.sex ?? titularRow.sexo);
+  const titularBirthDateValue = titularRow.birthDate ?? titularRow.fechaNacimiento;
+  const titularBirthDate =
+    typeof titularBirthDateValue === "string" ? titularBirthDateValue.trim() : "";
+  const titularInvalid = parseInvalid(titularRow.invalid ?? titularRow.invalido);
+
+  if (!titularSex) {
+    issues.push("Titular: sexo inválido.");
+  } else if (!isValidIsoDate(titularBirthDate)) {
+    issues.push("Titular: fecha de nacimiento inválida.");
+  } else if (titularInvalid === null) {
+    issues.push("Titular: invalidez inválida.");
+  } else {
+    beneficiaries.push({
+      fullName: pickBeneficiaryFullName(titularRow, "T", 1),
+      type: "T",
+      sex: titularSex,
+      birthDate: titularBirthDate,
+      invalid: titularInvalid
+    });
+  }
+
+  const familyRaw = readPathValue(payload, "grupoFamiliar");
+  if (familyRaw === null || familyRaw === undefined) {
+    return beneficiaries;
+  }
+
+  if (!Array.isArray(familyRaw)) {
+    issues.push("grupoFamiliar debe ser un arreglo.");
+    return beneficiaries;
+  }
+
+  familyRaw.forEach((item, index) => {
+    if (!item || typeof item !== "object") {
+      issues.push(`Grupo familiar #${index + 1} inválido.`);
+      return;
+    }
+
+    const row = item as Record<string, unknown>;
+    const type = parseType(row.relacion ?? row.type);
+    const sex = parseSex(row.sex ?? row.sexo);
+    const birthDateValue = row.birthDate ?? row.fechaNacimiento;
+    const birthDate = typeof birthDateValue === "string" ? birthDateValue.trim() : "";
+    const invalid = parseInvalid(row.invalid ?? row.invalido);
+
+    if (!type || type === "T") {
+      issues.push(`Grupo familiar #${index + 1}: relación inválida.`);
+      return;
+    }
+
+    if (!sex) {
+      issues.push(`Grupo familiar #${index + 1}: sexo inválido.`);
+      return;
+    }
+
+    if (!isValidIsoDate(birthDate)) {
+      issues.push(`Grupo familiar #${index + 1}: fecha de nacimiento inválida.`);
+      return;
+    }
+
+    if (invalid === null) {
+      issues.push(`Grupo familiar #${index + 1}: invalidez inválida.`);
+      return;
+    }
+
+    beneficiaries.push({
+      fullName: pickBeneficiaryFullName(row, type, nextBeneficiaryOrder(type, counters)),
+      type,
+      sex,
+      birthDate,
+      invalid
+    });
+  });
+
+  if (beneficiaries.length > 56) {
+    issues.push("Se recibió más de 56 beneficiarios.");
+  }
 
   return beneficiaries;
 }
@@ -418,6 +573,30 @@ function mapInfoPayloadToCanonical(
     readString(dataRecord, ["calculationDate", "fechaCalculo"]) ??
     toIsoDateToday();
 
+  const mrsValue = readNumber(dataRecord, ["valorMRS", "mrs", "mrsValue"]);
+  const matriculationDate =
+    readString(titularRecord, ["fechaMatriculacion", "matriculationDate"]) ?? null;
+
+  const mandatoryStartAge = readNumber(dataRecord, [
+    "mandatoryContribution.startAge",
+    "mandatoryContributionStartAge",
+    "titular.edadInicioAportesObligatorios"
+  ]);
+  const mandatoryEndAge = readNumber(dataRecord, [
+    "mandatoryContribution.endAge",
+    "mandatoryContributionEndAge",
+    "titular.edadJubilacion"
+  ]);
+  const voluntaryStartAge = readNumber(dataRecord, [
+    "voluntaryContribution.startAge",
+    "voluntaryContributionStartAge",
+    "titular.edadInicioAportesVoluntarios"
+  ]);
+  const voluntaryEndAge = readNumber(dataRecord, [
+    "voluntaryContribution.endAge",
+    "voluntaryContributionEndAge"
+  ]);
+
   return {
     calculationDate,
     affiliate: {
@@ -430,7 +609,31 @@ function mapInfoPayloadToCanonical(
       ...(voluntaryFunds !== null ? { voluntary: voluntaryFunds } : {})
     },
     bov,
-    beneficiaries
+    beneficiaries,
+    ...(mrsValue !== null || matriculationDate !== null
+      ? {
+          solidary: {
+            ...(mrsValue !== null ? { mrsValue } : {}),
+            ...(matriculationDate ? { matriculationDate } : {})
+          }
+        }
+      : {}),
+    ...(mandatoryStartAge !== null || mandatoryEndAge !== null
+      ? {
+          mandatoryContribution: {
+            ...(mandatoryStartAge !== null ? { startAge: mandatoryStartAge } : {}),
+            ...(mandatoryEndAge !== null ? { endAge: mandatoryEndAge } : {})
+          }
+        }
+      : {}),
+    ...(voluntaryStartAge !== null || voluntaryEndAge !== null
+      ? {
+          voluntaryContribution: {
+            ...(voluntaryStartAge !== null ? { startAge: voluntaryStartAge } : {}),
+            ...(voluntaryEndAge !== null ? { endAge: voluntaryEndAge } : {})
+          }
+        }
+      : {})
   };
 }
 
@@ -447,13 +650,37 @@ function normalizeRemotePayload(
 }
 
 function pickCalculationDate(payload: Record<string, unknown>, issues: string[]): string {
-  const calculationDate = readString(payload, ["calculationDate", "calculation_date"]);
+  const calculationDate = readString(payload, [
+    "calculationDate",
+    "calculation_date",
+    "fechaCalculo",
+    "fecha_calculo"
+  ]);
   if (!calculationDate || !isValidIsoDate(calculationDate)) {
     issues.push("No se recibió calculationDate válido.");
     return "";
   }
 
   return calculationDate;
+}
+
+function determineSolidarySourceStatus(
+  mrsValue: number | null,
+  matriculationDate: string | null
+): SolidarySourceStatus {
+  if (mrsValue !== null && matriculationDate !== null) {
+    return "READY";
+  }
+
+  if (mrsValue === null && matriculationDate === null) {
+    return "MISSING_BOTH";
+  }
+
+  if (mrsValue === null) {
+    return "MISSING_MRS";
+  }
+
+  return "MISSING_MATRICULATION_DATE";
 }
 
 export function mapRemoteContextToAffiliateContext(
@@ -482,29 +709,73 @@ export function mapRemoteContextToAffiliateContext(
     "funds.mandatory",
     "mandatoryFunds",
     "mandatory_funds",
-    "accountBalanceMandatory"
+    "accountBalanceMandatory",
+    "cuentaCapitalizacion.aportesObligatorios"
   ]);
   const voluntaryFunds = readNumber(payload, [
     "funds.voluntary",
     "voluntaryFunds",
     "voluntary_funds",
-    "accountBalanceVoluntary"
+    "accountBalanceVoluntary",
+    "cuentaCapitalizacion.aportesVoluntarios"
+  ]);
+  const totalFunds = readNumber(payload, [
+    "funds.total",
+    "accountBalance",
+    "cuentaCapitalizacion.saldoTotal",
+    "saldoTotal"
   ]);
 
-  if (mandatoryFunds === null) {
+  let mandatoryFundsResolved = mandatoryFunds;
+  let voluntaryFundsResolved = voluntaryFunds;
+
+  if (mandatoryFundsResolved === null && voluntaryFundsResolved !== null && totalFunds !== null) {
+    mandatoryFundsResolved = totalFunds - voluntaryFundsResolved;
+  }
+
+  if (voluntaryFundsResolved === null && mandatoryFundsResolved !== null && totalFunds !== null) {
+    voluntaryFundsResolved = totalFunds - mandatoryFundsResolved;
+  }
+
+  if (mandatoryFundsResolved === null) {
     issues.push("No se recibió el fondo obligatorio.");
   }
 
-  if (voluntaryFunds === null) {
+  if (voluntaryFundsResolved === null) {
     issues.push("No se recibió el fondo voluntario.");
   }
 
-  const bov = readNumber(payload, ["bov", "var", "varValue", "targetValue"]);
+  const bov = readNumber(payload, [
+    "bov",
+    "var",
+    "varValue",
+    "targetValue",
+    "valorVAR"
+  ]);
   if (bov === null) {
     issues.push("No se recibió bov/VAR.");
   }
 
-  const parsedEmail = readString(payload, ["affiliate.email", "email"]);
+  const mrsCandidate = readNumber(payload, [
+    "solidary.mrsValue",
+    "mrs",
+    "mrsValue",
+    "valorMRS"
+  ]);
+  const mrsValue = mrsCandidate !== null && mrsCandidate >= 0 ? mrsCandidate : null;
+
+  const matriculationDateCandidate = readString(payload, [
+    "solidary.matriculationDate",
+    "titular.fechaMatriculacion",
+    "fechaMatriculacion",
+    "affiliate.matriculationDate"
+  ]);
+  const matriculationDate =
+    matriculationDateCandidate && isValidIsoDate(matriculationDateCandidate)
+      ? matriculationDateCandidate
+      : null;
+
+  const parsedEmail = readString(payload, ["affiliate.email", "email", "titular.email"]);
   const affiliateEmail = parsedEmail ?? session.email;
 
   if (!affiliateEmail) {
@@ -515,7 +786,8 @@ export function mapRemoteContextToAffiliateContext(
     "affiliate.fullName",
     "affiliate.name",
     "fullName",
-    "name"
+    "name",
+    "titular.nombreCompleto"
   ]);
 
   const titular = beneficiaries.find((item) => item.type === "T");
@@ -529,16 +801,19 @@ export function mapRemoteContextToAffiliateContext(
 
   const mandatoryStartAge = readNumber(payload, [
     "mandatoryContribution.startAge",
-    "mandatoryContributionStartAge"
+    "mandatoryContributionStartAge",
+    "titular.edadInicioAportesObligatorios"
   ]);
   const mandatoryEndAgeDefault = readNumber(payload, [
     "mandatoryContribution.endAge",
     "mandatoryContribution.endAgeDefault",
-    "mandatoryContributionEndAge"
+    "mandatoryContributionEndAge",
+    "titular.edadJubilacion"
   ]);
   const voluntaryStartAge = readNumber(payload, [
     "voluntaryContribution.startAge",
-    "voluntaryContributionStartAge"
+    "voluntaryContributionStartAge",
+    "titular.edadInicioAportesVoluntarios"
   ]);
   const voluntaryEndAgeDefault = readNumber(payload, [
     "voluntaryContribution.endAge",
@@ -576,7 +851,14 @@ export function mapRemoteContextToAffiliateContext(
     issues.push("voluntaryContribution.endAgeDefault no puede superar mandatoryContribution.endAgeDefault.");
   }
 
-  if (issues.length > 0 || mandatoryFunds === null || voluntaryFunds === null || bov === null || mandatoryStart === null || voluntaryStart === null) {
+  if (
+    issues.length > 0 ||
+    mandatoryFundsResolved === null ||
+    voluntaryFundsResolved === null ||
+    bov === null ||
+    mandatoryStart === null ||
+    voluntaryStart === null
+  ) {
     throw new AffiliateContextValidationError(
       "No fue posible construir el contexto canónico de simulación.",
       issues
@@ -589,11 +871,11 @@ export function mapRemoteContextToAffiliateContext(
       fullName: affiliateFullName
     },
     calculationDate,
-    accountBalance: mandatoryFunds + voluntaryFunds,
+    accountBalance: mandatoryFundsResolved + voluntaryFundsResolved,
     funds: {
-      mandatory: mandatoryFunds,
-      voluntary: voluntaryFunds,
-      total: mandatoryFunds + voluntaryFunds
+      mandatory: mandatoryFundsResolved,
+      voluntary: voluntaryFundsResolved,
+      total: mandatoryFundsResolved + voluntaryFundsResolved
     },
     bov,
     mandatoryContribution: {
@@ -603,6 +885,11 @@ export function mapRemoteContextToAffiliateContext(
     voluntaryContribution: {
       startAge: voluntaryStart,
       endAgeDefault: voluntaryEnd
+    },
+    solidary: {
+      mrsValue,
+      matriculationDate,
+      sourceStatus: determineSolidarySourceStatus(mrsValue, matriculationDate)
     },
     beneficiaries
   };

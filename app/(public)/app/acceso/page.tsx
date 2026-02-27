@@ -146,6 +146,7 @@ export default function AccesoPage() {
             <button type="submit" className="anx-primary-btn" disabled={loading}>
               {loading ? "Enviando..." : "Enviar código"}
             </button>
+            {error && <p className="anx-status anx-status-error">{error}</p>}
           </form>
         ) : (
           <form onSubmit={(event) => void verifyCode(event)} className="anx-form-grid">
@@ -164,6 +165,7 @@ export default function AccesoPage() {
             <button type="submit" className="anx-primary-btn" disabled={loading}>
               {loading ? "Validando..." : "Ingresar"}
             </button>
+            {error && <p className="anx-status anx-status-error">{error}</p>}
             <button
               type="button"
               className="anx-ghost-btn"
@@ -181,8 +183,6 @@ export default function AccesoPage() {
             )}
           </form>
         )}
-
-        {error && <p className="anx-status anx-status-error">{error}</p>}
       </article>
     </section>
   );

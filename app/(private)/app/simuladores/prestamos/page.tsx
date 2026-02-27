@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { JSX } from "react";
-import PrestamosSimulatorPage from "@/sim-guion-prestamos/src/ui/prestamos-simulator-page";
+import PrestamosIsolatedSimulatorPage from "@/sim-guion-prestamos/src/ui/prestamos-isolated-simulator-page";
 
 function isPrestamosUiV2Enabled(): boolean {
   const raw = process.env.ENABLE_PRESTAMOS_UI_V2?.trim().toLowerCase();
@@ -32,5 +32,5 @@ export default function SimuladorPrestamosPage(): JSX.Element {
     );
   }
 
-  return <PrestamosSimulatorPage />;
+  return <PrestamosIsolatedSimulatorPage />;
 }

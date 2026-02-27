@@ -12,7 +12,10 @@ import type {
   AuthChallengeResponse,
   SessionInfo
 } from "@/lib/types/auth";
-import type { SimulationInput, SimulationResult } from "@/lib/types/simulation";
+import type {
+  SimulationInput,
+  SimulationResult
+} from "@/lib/types/simulation";
 
 const WHAT_IF_STEP = 100000;
 const WHAT_IF_SCENARIOS = 8;
@@ -573,7 +576,7 @@ export default function HomePage() {
                   <article className="af-card af-side-card">
                     <div className="af-mini-label">Situación actual</div>
                     <div className="af-total-box">
-                      <span>Total acumulado</span>
+                      <span>Tus fondos actuales acumulados</span>
                       <strong>{formatCurrency(context.funds.total)}</strong>
                     </div>
                     <div className="af-side-kpi-grid">
@@ -588,13 +591,19 @@ export default function HomePage() {
                     </div>
                     <div className="af-side-inline-values">
                       <span>VAR: {formatCurrency(context.bov)}</span>
+                      <span>
+                        MRS:{" "}
+                        {context.solidary.mrsValue !== null
+                          ? formatCurrency(context.solidary.mrsValue)
+                          : "No disponible"}
+                      </span>
                       <span>Fecha cálculo: {formatIsoToDisplay(context.calculationDate)}</span>
                     </div>
                   </article>
 
                   {titular && (
                     <article className="af-card af-side-card">
-                      <div className="af-mini-label">Titular</div>
+                      <div className="af-mini-label">Tus datos personales</div>
                       <div className="af-holder-name">{titular.fullName}</div>
                       <div className="af-side-kpi-grid af-side-kpi-grid-3">
                         <article className="af-side-kpi">
@@ -638,14 +647,14 @@ export default function HomePage() {
                   <article className="af-card af-control-panel">
                     <div className="af-control-heading">
                       <div>
-                        <h2>Variables editables</h2>
-                        <p>Personalizá tu escenario y ejecutá el cálculo.</p>
+                        <h2>Completá para Simular tu Jubilación</h2>
+              
                       </div>
                     </div>
 
                     <div className="af-form af-form-compact">
                       <label className="af-field af-editable-group">
-                        <span className="af-editable-label">Aporte voluntario mensual</span>
+                        <span className="af-editable-label"><span className="af-step-badge">1</span>¿Cuánto aportarías a tu Fondo Voluntario por mes?</span>
                         <div className="af-currency-input af-currency-input-dark">
                           <span>$</span>
                           <input
@@ -680,7 +689,7 @@ export default function HomePage() {
 
                       <div className="af-editable-age-row af-editable-age-row-compact">
                         <label className="af-field af-editable-group af-editable-retirement-age-field">
-                          <span className="af-editable-label">Edad de jubilación</span>
+                          <span className="af-editable-label"><span className="af-step-badge">2</span>¿A que edad esperas jubilarte?</span>
                           <div
                             className="af-age-inline-picker af-age-inline-picker-compact"
                             role="group"
@@ -705,7 +714,7 @@ export default function HomePage() {
                         </label>
 
                         <label className="af-field af-editable-group af-editable-end-age-field">
-                          <span className="af-editable-label">Edad fin aportes</span>
+                          <span className="af-editable-label"><span className="af-step-badge">3</span>Edad fin aportes voluntarios</span>
                           <div className="af-currency-input af-currency-input-dark af-select-input-dark">
                             <select
                               value={formState.voluntaryEndAge}
@@ -769,31 +778,18 @@ export default function HomePage() {
                     </article>
                   ) : (
                     <>
-                      <section className="af-main-kpis">
-                        <article className="af-card af-main-kpi-card af-main-kpi-primary">
-                          <span>Haber mensual proyectado</span>
-                          <strong>{formatCurrency(result.projectedBenefit)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Capital final estimado</span>
-                          <strong>{formatCurrency(result.finalBalance)}</strong>
-                        </article>
-                      </section>
+                      <article className="af-jubilacion-hero">
+                        <h3>Tu jubilación en el año {extractYear(result.retirementDate)} será</h3>
+                        <strong className="af-jubilacion-hero-amount">{formatCurrency(resolveTotalProjectedBenefit(result))}</strong>
+                        <div className="af-jubilacion-hero-breakdown">
+                          <span>Capitalización: {formatCurrency(resolveCapitalizationBenefit(result))}</span>
+                          <span>Fondo solidario: {formatCurrency(resolveSolidaryBenefit(result))}</span>
+                        </div>
+                      </article>
 
-                      <section className="af-main-kpis af-main-kpis-secondary">
-                        <article className="af-card af-main-kpi-card">
-                          <span>PPUU</span>
-                          <strong>{formatNumber(result.ppuu, 2)}</strong>
-                        </article>
-                        <article className="af-card af-main-kpi-card">
-                          <span>Fecha de jubilación</span>
-                          <strong>{formatIsoToDisplay(result.retirementDate)}</strong>
-                        </article>
-                      </section>
-
-                      <article className="af-card af-chart-main-card">
+                      <article className="af-card af-chart-main-card af-chart-fullwidth">
                         <div className="af-chart-header">
-                          <h2>Evolución What-If</h2>
+                          <h2>Mirá cómo aumenta tu jubilación si hacés aportes voluntarios</h2>
                           <div className="af-whatif-meta">
                             <span>Mínimo: {formatCurrency(minWhatIfBenefit)}</span>
                             <span>Máximo: {formatCurrency(maxWhatIfBenefit)}</span>
@@ -947,6 +943,7 @@ function buildWhatIfRows(baseInput: SimulationInput, baseResult: SimulationResul
   const contributionMonths =
     Math.max(0, baseInput.voluntaryContribution.endAge - baseInput.voluntaryContribution.startAge) * 12;
   const ppuuSafe = baseResult.ppuu > 0 ? baseResult.ppuu : 1;
+  const fixedSolidaryBenefit = resolveSolidaryBenefit(baseResult);
 
   const scenarios = Array.from(
     { length: WHAT_IF_SCENARIOS },
@@ -959,7 +956,7 @@ function buildWhatIfRows(baseInput: SimulationInput, baseResult: SimulationResul
 
     return {
       monthlyAmount,
-      projectedBenefit: Math.max(0, estimatedFinalBalance / ppuuSafe)
+      projectedBenefit: Math.max(0, estimatedFinalBalance / ppuuSafe) + fixedSolidaryBenefit
     };
   });
 }
@@ -1000,6 +997,38 @@ function sanitizeUserError(message: string): string {
   return message;
 }
 
+function resolveCapitalizationBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { capitalizationBenefit?: number })
+    .capitalizationBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return result.projectedBenefit;
+}
+
+function resolveSolidaryBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { solidaryBenefit?: number }).solidaryBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return 0;
+}
+
+function resolveTotalProjectedBenefit(result: SimulationResult): number {
+  const candidate = (result as unknown as { totalProjectedBenefit?: number })
+    .totalProjectedBenefit;
+
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  return resolveCapitalizationBenefit(result) + resolveSolidaryBenefit(result);
+}
+
 function formatBeneficiaryType(type: "T" | "C" | "H"): string {
   if (type === "T") {
     return "Titular";
@@ -1028,6 +1057,15 @@ function formatIsoToDisplay(iso: string): string {
 
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
+}
+
+function extractYear(iso: string): string {
+  const match = ISO_DATE_REGEX.exec(iso);
+  if (!match) {
+    return iso;
+  }
+
+  return iso.split("-")[0];
 }
 
 function calculateAgeFromIso(iso: string): number | null {
