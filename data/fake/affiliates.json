@@ -10,6 +10,8 @@
         "voluntary": 395440.18
       },
       "bov": 275000,
+      "mrsValue": 150000,
+      "matriculationDate": "1984-10-11",
       "mandatoryContribution": {
         "startAge": 44,
         "endAge": 65
@@ -52,6 +54,8 @@
         "voluntary": 214199.31
       },
       "bov": 198500,
+      "mrsValue": 132000,
+      "matriculationDate": "2010-03-01",
       "mandatoryContribution": {
         "startAge": 39,
         "endAge": 65

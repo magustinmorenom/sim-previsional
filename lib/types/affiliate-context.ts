@@ -4,6 +4,18 @@ export interface AffiliateBeneficiary extends BeneficiaryInput {
   fullName: string;
 }
 
+export type SolidarySourceStatus =
+  | "READY"
+  | "MISSING_MRS"
+  | "MISSING_MATRICULATION_DATE"
+  | "MISSING_BOTH";
+
+export interface AffiliateSolidaryContext {
+  mrsValue: number | null;
+  matriculationDate: string | null;
+  sourceStatus: SolidarySourceStatus;
+}
+
 export interface AffiliateSimulationContext {
   affiliate: {
     email: string;
@@ -25,5 +37,6 @@ export interface AffiliateSimulationContext {
     startAge: number;
     endAgeDefault: number;
   };
+  solidary: AffiliateSolidaryContext;
   beneficiaries: AffiliateBeneficiary[];
 }

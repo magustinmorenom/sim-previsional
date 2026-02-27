@@ -1,10 +1,17 @@
 import Link from "next/link";
 import type { JSX } from "react";
-import PrestamosSimulatorPage from "@/sim-guion-prestamos/src/ui/prestamos-simulator-page";
+import PrestamosSimulatorSwitcher from "@/sim-guion-prestamos/src/ui/prestamos-simulator-switcher";
+
+type PrestamosSimulatorMode = "api" | "isolated";
 
 function isPrestamosUiV2Enabled(): boolean {
   const raw = process.env.ENABLE_PRESTAMOS_UI_V2?.trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
+}
+
+function getPrestamosSimulatorMode(): PrestamosSimulatorMode {
+  const raw = process.env.PRESTAMOS_SIMULATOR_MODE?.trim().toLowerCase();
+  return raw === "isolated" ? "isolated" : "api";
 }
 
 export default function SimuladorPrestamosPage(): JSX.Element {
@@ -32,5 +39,5 @@ export default function SimuladorPrestamosPage(): JSX.Element {
     );
   }
 
-  return <PrestamosSimulatorPage />;
+  return <PrestamosSimulatorSwitcher defaultMode={getPrestamosSimulatorMode()} />;
 }

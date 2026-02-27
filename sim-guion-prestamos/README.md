@@ -21,6 +21,7 @@ Módulo de simulación de préstamos para la app anexa, con dos etapas de integr
 - `PRESTAMOS_API_TIMEOUT_MS`: timeout de requests al upstream.
 - `ENABLE_PRESTAMOS_SIMULATION`: habilita `POST /api/v1/public/prestamos/simulate`.
 - `ENABLE_PRESTAMOS_UI_V2`: habilita la nueva experiencia de UI en `/app/simuladores/prestamos`.
+- `PRESTAMOS_SIMULATOR_MODE`: modo inicial del módulo en UI (`api` o `isolated`).
 - `PRESTAMOS_MOCK_PORT`: puerto local del mock (`4010` por defecto).
 - `PRESTAMOS_MOCK_API_KEY`: api key opcional exigida por mock.
 
@@ -42,3 +43,12 @@ npm run dev:prestamos
 
 Actualizar solo `PRESTAMOS_API_BASE_URL` y `API_KEY_CPS`.
 El frontend se mantiene consumiendo rutas internas `/api/v1/public/prestamos/*`.
+
+## Modo Isolated (sin API)
+
+La pantalla `/app/simuladores/prestamos` permite alternar entre:
+
+- `API conectada`: usa BFF y endpoints `/api/v1/public/prestamos/*`.
+- `Isolated`: usa catálogo local y cálculo local sin requests remotas.
+
+El valor inicial se configura con `PRESTAMOS_SIMULATOR_MODE` y el usuario puede cambiarlo desde la UI.

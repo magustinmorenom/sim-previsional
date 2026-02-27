@@ -360,6 +360,80 @@
   gap: 8px;
 }
 
+.formColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.restrictionList {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.restrictionItem {
+  border-radius: 8px;
+  border: 1px solid #d8e6f5;
+  background: #f5f9ff;
+  color: #2f5277;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 8px;
+}
+
+.switcherStack {
+  display: grid;
+  gap: 12px;
+}
+
+.modeSwitchCard {
+  display: grid;
+  gap: 10px;
+}
+
+.modeSwitchHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modeSwitchHead h2 {
+  margin: 0;
+}
+
+.modeSwitchHint {
+  color: #5f7c99;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.modeSwitchActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modeSwitchButton {
+  border: 1px solid #c8daee;
+  background: #f1f7ff;
+  color: #204c7f;
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.modeSwitchButtonActive {
+  border-color: #174a8b;
+  background: linear-gradient(135deg, #1f5aa3 0%, #153f74 100%);
+  color: #ffffff;
+}
+
 .emptyState {
   margin: 0;
   color: #5a7593;
@@ -372,6 +446,10 @@
   }
 
   .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formColumns {
     grid-template-columns: 1fr;
   }
 

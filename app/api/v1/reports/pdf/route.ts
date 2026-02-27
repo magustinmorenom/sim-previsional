@@ -111,7 +111,12 @@ async function buildPdf(
   writeLine("Resultados", true);
   writeLine(`PPUU: ${result.ppuu}`);
   writeLine(`Saldo Final: ${result.finalBalance}`);
-  writeLine(`Beneficio Proyectado: ${result.projectedBenefit}`);
+  writeLine(`Componente capitalización: ${result.capitalizationBenefit}`);
+  writeLine(`Componente fondo solidario: ${result.solidaryBenefit}`);
+  writeLine(`Haber total proyectado: ${result.totalProjectedBenefit}`);
+  writeLine(`Beneficio Proyectado (compat): ${result.projectedBenefit}`);
+  writeLine(`Estado PBS: ${result.solidaryStatus.code}`);
+  writeLine(`Detalle PBS: ${result.solidaryStatus.message}`);
   writeLine(`Fecha Jubilación: ${result.retirementDate}`);
   writeLine(`n=${result.counts.n} cs=${result.counts.spouses} hs=${result.counts.children}`);
   writeLine(`xmin=${result.trace.xmin} tMax=${result.trace.tMax}`);

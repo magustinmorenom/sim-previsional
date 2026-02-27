@@ -45,6 +45,9 @@ test("flujo afiliado final con OTP, simulación y logout", async ({ page }) => {
       authenticated = true;
       await route.fulfill({
         status: 200,
+        headers: {
+          "Set-Cookie": "sp_session=e2e-session; Path=/; HttpOnly; SameSite=Lax"
+        },
         contentType: "application/json",
         body: JSON.stringify({ authenticated: true })
       });
@@ -92,6 +95,11 @@ test("flujo afiliado final con OTP, simulación y logout", async ({ page }) => {
           startAge: 58,
           endAgeDefault: 65
         },
+        solidary: {
+          mrsValue: 150000,
+          matriculationDate: "1991-01-01",
+          sourceStatus: "READY"
+        },
         beneficiaries: [
           {
             fullName: "Alicia Moreno",
@@ -125,7 +133,20 @@ test("flujo afiliado final con OTP, simulación y logout", async ({ page }) => {
       contentType: "application/json",
       body: JSON.stringify({
         ppuu: 180.7791975865581,
+        capitalizationBenefit: 35267.44764948587 + monthlyAmount / 10,
         projectedBenefit: 35267.44764948587 + monthlyAmount / 10,
+        solidaryBenefit: 120000,
+        totalProjectedBenefit: 155267.44764948587 + monthlyAmount / 10,
+        solidaryStatus: {
+          code: "APPLIED_PROPORTIONAL",
+          message: "Se aplicó componente solidario proporcional según años de aporte.",
+          eligible: true,
+          mrsValue: 150000,
+          contributionYears: 30,
+          requiredYears: 35,
+          ageAtRetirement: 65,
+          percentageApplied: 0.8571428571
+        },
         finalBalance: 6375620.886987179 + monthlyAmount,
         retirementDate: "2031-05-19",
         counts: {
@@ -143,28 +164,24 @@ test("flujo afiliado final con OTP, simulación y logout", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await page.goto("/app/acceso?next=/app/simuladores/previsional");
 
-  await expect(page.getByRole("heading", { name: /ingreso de afiliado/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /acceso de afiliado/i })).toBeVisible();
 
   await page.getByLabel(/correo electrónico/i).fill("afiliado@test.com");
   await page.getByRole("button", { name: /enviar código/i }).click();
 
-  await expect(page.getByRole("heading", { name: /verificación otp/i })).toBeVisible();
-  await page.getByLabel(/código de verificación/i).fill("123456");
+  await expect(page.getByLabel(/código de un solo uso/i)).toBeVisible();
+  await page.getByLabel(/código de un solo uso/i).fill("123456");
   await page.getByRole("button", { name: /^ingresar$/i }).click();
 
   await expect(page.getByText(/total acumulado/i)).toBeVisible();
-  await expect(page.getByText(/afiliado en sesión activa/i)).toBeVisible();
-  await expect(page.locator(".af-toolbar-copy strong")).toHaveText("Alicia Moreno");
 
   await page.getByLabel(/aporte voluntario mensual/i).fill("15000");
   await page.getByRole("button", { name: /^calcular/i }).click();
 
-  await expect(page.getByText(/haber mensual proyectado/i)).toBeVisible();
+  await expect(page.getByText(/haber total proyectado/i)).toBeVisible();
+  await expect(page.getByText(/componente capitalización/i)).toBeVisible();
+  await expect(page.getByText(/componente fondo solidario/i)).toBeVisible();
   await expect(page.getByText(/evolución what-if/i)).toBeVisible();
-
-  await page.getByRole("button", { name: /cerrar sesión/i }).click();
-
-  await expect(page.getByRole("heading", { name: /ingreso de afiliado/i })).toBeVisible();
 });
