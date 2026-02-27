@@ -1,23 +1,33 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { JSX } from "react";
 import styles from "@/sim-guion-prestamos/src/ui/prestamos-simulator.module.css";
-import { formatCompactCurrency, formatCurrency, formatIsoDate, formatPercent } from "@/sim-guion-prestamos/src/domain/formatters";
+import { formatCompactCurrency, formatCurrency } from "@/sim-guion-prestamos/src/domain/formatters";
 import { toChartPoints } from "@/sim-guion-prestamos/src/domain/contracts";
 import { usePrestamosIsolatedSimulator } from "@/sim-guion-prestamos/src/isolated/use-prestamos-isolated-simulator";
 
+function formatThousands(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  const parsed = Number(digits);
+  if (!Number.isFinite(parsed)) {
+    return "";
+  }
+
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(parsed);
+}
+
 export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
   const {
-    generatedAt,
-    fuente,
     lineas,
     selectedLinea,
     form,
     validation,
     simulation,
-    simulationMeta,
     simulationError,
     canSimulate,
     cuotasConsumo,
@@ -28,14 +38,14 @@ export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
     updateLinea,
     updateMonto,
     updateCuotas,
-    updateEdad,
-    updateAntiguedad,
     updateIngreso,
     updateTipoAfiliado,
     updateModalidadTasa,
     runSimulation,
     clearSimulation
   } = usePrestamosIsolatedSimulator();
+
+  const [expandedLineaId, setExpandedLineaId] = useState<number | null>(selectedLinea?.id ?? null);
 
   const chartPoints = useMemo(
     () => toChartPoints(simulation?.data.cuadroDeMarcha ?? []).slice(0, 24),
@@ -65,110 +75,91 @@ export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
       .slice(0, 4);
   }, [selectedLinea]);
 
-  const tasaVariableActual = useMemo(() => {
-    const tasaMode = selectedLinea?.tasaModes.includes("VARIABLE") ? form.modalidadTasa : "FIJA";
+  function handleLineaClick(lineaId: number): void {
+    updateLinea(lineaId);
+    setExpandedLineaId((prev) => (prev === lineaId ? null : lineaId));
+  }
 
-    if (tasaMode !== "VARIABLE") {
-      return null;
-    }
+  function handleMontoChange(rawValue: string): void {
+    const digits = rawValue.replace(/\D/g, "");
+    updateMonto(digits);
+  }
 
-    return `${rateModeLabels.VARIABLE} (${formatPercent(31)})`;
-  }, [form.modalidadTasa, rateModeLabels.VARIABLE, selectedLinea?.tasaModes]);
+  function handleIngresoChange(rawValue: string): void {
+    const digits = rawValue.replace(/\D/g, "");
+    updateIngreso(digits);
+  }
+
+  const displayMonto = formatThousands(form.montoOtorgado);
+  const displayIngreso = formatThousands(form.ingresoMensual);
 
   return (
     <section className={styles.root}>
-      <article className={`anx-panel ${styles.hero}`}>
-        <h1>Simulador de préstamos (Isolated)</h1>
-        <p>
-          Modo sin API remota. Catálogo, tasas y validaciones aplicadas localmente según especificación SPS.
-        </p>
-
-        <div className={styles.sourcePills}>
-          <span className={styles.sourceBadge}>Origen: catálogo local</span>
-          <span className={styles.sourceBadge}>Generado: {formatIsoDate(generatedAt)}</span>
-          <a className={styles.sourceBadge} href={fuente} target="_blank" rel="noreferrer">
-            Fuente SPS
-          </a>
-        </div>
-      </article>
-
       <div className={styles.shellGrid}>
         <aside className={styles.sideStack}>
-          <article className="anx-panel">
+          <article className={`anx-panel ${styles.sidePanel}`}>
             <h2>Seleccionar línea</h2>
-            <p className="anx-results-count">{lineas.length} líneas en modo aislado.</p>
+            <p className="anx-results-count">{lineas.length} líneas disponibles</p>
 
             <div className={styles.lineaList}>
               {lineas.map((linea) => {
                 const active = selectedLinea?.id === linea.id;
+                const expanded = expandedLineaId === linea.id;
 
                 return (
-                  <button
-                    key={linea.id}
-                    type="button"
-                    className={`${styles.lineaButton} ${active ? styles.lineaButtonActive : ""}`}
-                    onClick={() => updateLinea(linea.id)}
-                  >
-                    <strong>
-                      {linea.nombre} <small>({linea.codigo})</small>
-                    </strong>
-                    <p>{linea.descripcion}</p>
+                  <div key={linea.id} className={`${styles.accordionItem} ${active ? styles.accordionItemActive : ""}`}>
+                    <button
+                      type="button"
+                      className={styles.accordionHeader}
+                      onClick={() => handleLineaClick(linea.id)}
+                      aria-expanded={expanded}
+                    >
+                      <span className={styles.accordionArrow}>{expanded ? "▾" : "▸"}</span>
+                      <strong>{linea.nombre}</strong>
+                      <small>({linea.codigo})</small>
+                    </button>
 
-                    <div className={styles.badgeRow}>
-                      <span className={styles.badge}>{linea.amortizacionSistema}</span>
-                      <span className={styles.badge}>Máx. {linea.maxCuotas} cuotas</span>
-                      <span className={styles.badge}>{linea.categoria}</span>
-                    </div>
+                    {expanded && (
+                      <div className={styles.accordionBody}>
+                        <p>{linea.descripcion}</p>
 
-                    <small>
-                      Monto: {formatCurrency(linea.montoMinimo)} a {formatCurrency(linea.montoMaximo)}
-                    </small>
-                  </button>
+                        <div className={styles.badgeRow}>
+                          <span className={styles.badge}>{linea.amortizacionSistema}</span>
+                          <span className={styles.badge}>Máx. {linea.maxCuotas} cuotas</span>
+                          <span className={styles.badge}>{linea.categoria}</span>
+                          {linea.tasaModes.length > 1 && (
+                            <span className={styles.badge}>Fija / Variable</span>
+                          )}
+                        </div>
+
+                        <small>
+                          Monto: {formatCurrency(linea.montoMinimo)} a {formatCurrency(linea.montoMaximo)}
+                        </small>
+
+                        <p className={styles.accordionDetail}>
+                          Garantía: <strong>{linea.garantia}</strong>
+                        </p>
+
+                        {linea.restricciones.length > 0 && (
+                          <ul className={styles.restrictionListCompact}>
+                            {linea.restricciones.map((rule) => (
+                              <li key={rule}>{rule}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </article>
-
-          {selectedLinea && (
-            <article className="anx-panel anx-rate-card">
-              <h2>Reglas de la línea</h2>
-              <p>
-                Garantía: <strong>{selectedLinea.garantia}</strong>
-              </p>
-              {tasaVariableActual && (
-                <p>
-                  Tasa variable actual: <strong>{tasaVariableActual}</strong>
-                </p>
-              )}
-              <div className={styles.restrictionList}>
-                {selectedLinea.restricciones.map((rule) => (
-                  <span key={rule} className={styles.restrictionItem}>
-                    {rule}
-                  </span>
-                ))}
-              </div>
-            </article>
-          )}
         </aside>
 
         <main className={styles.mainStack}>
-          <article className="anx-panel">
+          <article className={`anx-panel ${styles.mainPanel}`}>
             <h2>Configurar simulación</h2>
             <div className={styles.formGrid}>
-              <label>
-                Línea de préstamo
-                <select
-                  value={selectedLinea?.id ?? ""}
-                  onChange={(event) => updateLinea(Number(event.target.value))}
-                >
-                  {lineas.map((linea) => (
-                    <option key={linea.id} value={linea.id}>
-                      {linea.nombre} ({linea.codigo})
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div className={styles.formColumns}>
                 <label>
                   Tipo de afiliado
@@ -203,44 +194,20 @@ export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
 
               <div className={styles.formColumns}>
                 <label>
-                  Edad actual
-                  <input
-                    type="number"
-                    min={18}
-                    max={79}
-                    value={form.edadActual}
-                    onChange={(event) => updateEdad(event.target.value)}
-                  />
-                  {validation.edadActual && <p className={styles.fieldError}>{validation.edadActual}</p>}
-                </label>
-
-                <label>
-                  Antigüedad matrícula (meses)
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.antiguedadMeses}
-                    onChange={(event) => updateAntiguedad(event.target.value)}
-                  />
-                  {validation.antiguedadMeses && <p className={styles.fieldError}>{validation.antiguedadMeses}</p>}
-                </label>
-              </div>
-
-              <div className={styles.formColumns}>
-                <label>
                   Ingreso mensual declarado
                   <input
                     type="text"
-                    value={form.ingresoMensual}
-                    onChange={(event) => updateIngreso(event.target.value)}
-                    placeholder="Ej: 1500000"
+                    inputMode="numeric"
+                    value={displayIngreso}
+                    onChange={(event) => handleIngresoChange(event.target.value)}
+                    placeholder="Ej: 1.500.000"
                   />
                   {validation.ingresoMensual && <p className={styles.fieldError}>{validation.ingresoMensual}</p>}
                 </label>
 
                 {selectedLinea?.plazosDisponibles ? (
                   <label>
-                    Cantidad de cuotas (fijas por línea)
+                    Cantidad de cuotas
                     <select
                       value={form.cantidadCuotas}
                       onChange={(event) => updateCuotas(event.target.value)}
@@ -272,9 +239,10 @@ export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
                 Monto otorgado
                 <input
                   type="text"
-                  value={form.montoOtorgado}
-                  onChange={(event) => updateMonto(event.target.value)}
-                  placeholder="Ej: 500000"
+                  inputMode="numeric"
+                  value={displayMonto}
+                  onChange={(event) => handleMontoChange(event.target.value)}
+                  placeholder="Ej: 500.000"
                 />
                 {validation.montoOtorgado && <p className={styles.fieldError}>{validation.montoOtorgado}</p>}
               </label>
@@ -301,115 +269,111 @@ export default function PrestamosIsolatedSimulatorPage(): JSX.Element {
                   Limpiar resultado
                 </button>
 
-                <Link href="/app/biblioteca" className="anx-link-btn">
+                <a
+                  href="https://sps.cpceer.org.ar/prestamos/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="anx-link-btn"
+                >
                   Ver requisitos
-                </Link>
+                </a>
+              </div>
+            </div>
+          </article>
+        </main>
+      </div>
+
+      {simulationError && <p className="anx-status anx-status-error">{simulationError}</p>}
+
+      {simulation && (
+        <>
+          <article className="anx-panel">
+            <h2>Resultado de simulación</h2>
+            <p className="anx-results-count">
+              Línea {simulation.data.linea.nombre} · {simulation.data.resumen.cantidadCuotas} cuotas ·{" "}
+              {simulation.data.resumen.sistemaAmortizacion}
+            </p>
+
+            <div className={styles.kpiGrid}>
+              <div className={`${styles.kpi} ${styles.kpiPrimary}`}>
+                <span>Total a pagar</span>
+                <strong>{formatCurrency(simulation.data.resumen.totalAPagar)}</strong>
+              </div>
+              <div className={styles.kpi}>
+                <span>Intereses</span>
+                <strong>{formatCurrency(simulation.data.resumen.totalIntereses)}</strong>
+              </div>
+              <div className={styles.kpi}>
+                <span>Monto acreditado</span>
+                <strong>{formatCurrency(simulation.data.costosIniciales.montoAcreditado)}</strong>
+              </div>
+              <div className={styles.kpi}>
+                <span>Descuentos iniciales</span>
+                <strong>{formatCurrency(simulation.data.costosIniciales.totalDescuentos)}</strong>
               </div>
             </div>
           </article>
 
-          {simulationError && <p className="anx-status anx-status-error">{simulationError}</p>}
+          <article className={`anx-panel ${styles.chartCard}`}>
+            <h2>Evolución de cuota (primeras 24)</h2>
+            <div className={styles.chartLegend}>
+              <span className={styles.legendItem}>Cuota total</span>
+              <span className={styles.legendItem}>Máximo: {formatCurrency(maxChartValue)}</span>
+            </div>
 
-          {simulation && (
-            <>
-              <article className="anx-panel">
-                <h2>Resultado de simulación</h2>
-                <p className="anx-results-count">
-                  Línea {simulation.data.linea.nombre} · {simulation.data.resumen.cantidadCuotas} cuotas ·{" "}
-                  {simulation.data.resumen.sistemaAmortizacion}
-                </p>
+            <div className={styles.barScroll}>
+              {chartPoints.map((point) => {
+                const height = maxChartValue > 0 ? (point.cuota / maxChartValue) * 100 : 0;
 
-                <div className={styles.kpiGrid}>
-                  <div className={`${styles.kpi} ${styles.kpiPrimary}`}>
-                    <span>Total a pagar</span>
-                    <strong>{formatCurrency(simulation.data.resumen.totalAPagar)}</strong>
+                return (
+                  <div
+                    key={point.nroCuota}
+                    className={styles.barGroup}
+                    title={`Cuota ${point.nroCuota}: ${formatCurrency(point.cuota)}`}
+                  >
+                    <div className={styles.barTrack}>
+                      <div className={styles.barFill} style={{ height: `${height}%` }} />
+                    </div>
+                    <span className={styles.barLabel}>{point.nroCuota}</span>
                   </div>
-                  <div className={styles.kpi}>
-                    <span>Intereses</span>
-                    <strong>{formatCurrency(simulation.data.resumen.totalIntereses)}</strong>
-                  </div>
-                  <div className={styles.kpi}>
-                    <span>Monto acreditado</span>
-                    <strong>{formatCurrency(simulation.data.costosIniciales.montoAcreditado)}</strong>
-                  </div>
-                  <div className={styles.kpi}>
-                    <span>Descuentos iniciales</span>
-                    <strong>{formatCurrency(simulation.data.costosIniciales.totalDescuentos)}</strong>
-                  </div>
-                </div>
+                );
+              })}
+            </div>
+          </article>
 
-                {simulationMeta && (
-                  <div className={styles.compareMeta}>
-                    <span>TEA aplicada: {formatPercent(simulationMeta.tea)}</span>
-                    <span>TEM: {formatPercent(simulationMeta.teaMensual)}</span>
-                    <span>Margen de afectación: {formatCurrency(simulationMeta.margenAfectacion)}</span>
-                    <span>Primera cuota: {formatCurrency(simulationMeta.primeraCuota)}</span>
-                  </div>
-                )}
-              </article>
-
-              <article className={`anx-panel ${styles.chartCard}`}>
-                <h2>Evolución de cuota (primeras 24)</h2>
-                <div className={styles.chartLegend}>
-                  <span className={styles.legendItem}>Cuota total</span>
-                  <span className={styles.legendItem}>Máximo: {formatCurrency(maxChartValue)}</span>
-                </div>
-
-                <div className={styles.barScroll}>
-                  {chartPoints.map((point) => {
-                    const height = maxChartValue > 0 ? (point.cuota / maxChartValue) * 100 : 0;
-
-                    return (
-                      <div
-                        key={point.nroCuota}
-                        className={styles.barGroup}
-                        title={`Cuota ${point.nroCuota}: ${formatCurrency(point.cuota)}`}
-                      >
-                        <div className={styles.barTrack}>
-                          <div className={styles.barFill} style={{ height: `${height}%` }} />
-                        </div>
-                        <span className={styles.barLabel}>{point.nroCuota}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </article>
-
-              <article className="anx-panel">
-                <h2>Cuadro de marcha</h2>
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Cuota</th>
-                        <th>Vencimiento</th>
-                        <th>Capital pendiente</th>
-                        <th>Amortización</th>
-                        <th>Intereses</th>
-                        <th>Cuota total</th>
-                        <th>Capital restante</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {simulation.data.cuadroDeMarcha.map((item) => (
-                        <tr key={item.nroCuota}>
-                          <td>{item.nroCuota}</td>
-                          <td>{item.fechaVencimientoEstimada}</td>
-                          <td>{formatCurrency(item.capitalPendiente)}</td>
-                          <td>{formatCurrency(item.amortizacion)}</td>
-                          <td>{formatCurrency(item.intereses)}</td>
-                          <td>{formatCurrency(item.cuota)}</td>
-                          <td>{formatCurrency(item.capitalRestante)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            </>
-          )}
-        </main>
-      </div>
+          <article className="anx-panel">
+            <h2>Cuadro de marcha</h2>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Cuota</th>
+                    <th>Vencimiento</th>
+                    <th>Capital pendiente</th>
+                    <th>Amortización</th>
+                    <th>Intereses</th>
+                    <th>Cuota total</th>
+                    <th>Capital restante</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {simulation.data.cuadroDeMarcha.map((item) => (
+                    <tr key={item.nroCuota}>
+                      <td>{item.nroCuota}</td>
+                      <td>{item.fechaVencimientoEstimada}</td>
+                      <td>{formatCurrency(item.capitalPendiente)}</td>
+                      <td>{formatCurrency(item.amortizacion)}</td>
+                      <td>{formatCurrency(item.intereses)}</td>
+                      <td>{formatCurrency(item.cuota)}</td>
+                      <td>{formatCurrency(item.capitalRestante)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </>
+      )}
     </section>
   );
 }

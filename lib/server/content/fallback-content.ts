@@ -91,18 +91,6 @@ export const fallbackDocuments: DocumentItem[] = [
     sourcePage: "https://sps.cpceer.org.ar/prestamo/personal-con-garantia-tasa-fija"
   },
   {
-    id: "doc-prestamo-jubilados",
-    title: "Detalle préstamos jubilados SPS",
-    category: "Préstamos",
-    topic: "Líneas",
-    fileType: "pdf",
-    url: "https://sps.cpceer.org.ar/wp-content/uploads/2019/09/PRESTAMOS-JUBILADOS-0725.pdf",
-    publishedAt: "2025-07-01",
-    tags: ["prestamos", "jubilados", "detalle"],
-    isNormative: false,
-    sourcePage: "https://sps.cpceer.org.ar/prestamo/jubilados-sps-tasa-fija"
-  },
-  {
     id: "doc-prestamo-prendario",
     title: "Detalle préstamo prendario",
     category: "Préstamos",
@@ -293,18 +281,6 @@ export const fallbackDocuments: DocumentItem[] = [
     tags: ["normativa", "reglamento", "cps"],
     isNormative: true,
     sourcePage: "https://sps.cpceer.org.ar/cps"
-  },
-  {
-    id: "doc-reglamento-sps-2025",
-    title: "Reglamento SPS 2025 (texto ordenado)",
-    category: "Normativa",
-    topic: "Reglamento",
-    fileType: "pdf",
-    url: "https://sps.cpceer.org.ar/wp-content/uploads/2025/10/REGLAMENT0-SPS-2025-Texto-Ordenado.pdf",
-    publishedAt: "2025-10-01",
-    tags: ["normativa", "reglamento", "sps"],
-    isNormative: true,
-    sourcePage: "https://sps.cpceer.org.ar/institucional/reglamentos"
   },
   {
     id: "doc-resolucion-cps-1",
@@ -509,7 +485,7 @@ export const fallbackFaqItems: FaqItem[] = [
     question: "¿Puedo adelantar cuotas?",
     answer:
       "La posibilidad de adelantar cuotas depende de las condiciones de cada línea y del reglamento general de préstamos.",
-    relatedDocuments: ["doc-reglamento-sps-2025", "doc-resolucion-1189"]
+    relatedDocuments: ["doc-resolucion-1189"]
   },
   {
     id: "faq-afiliado-optativo",

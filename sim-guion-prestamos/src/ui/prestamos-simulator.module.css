@@ -53,21 +53,118 @@
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 1.3fr);
   gap: 12px;
+  align-items: stretch;
 }
 
 .sideStack {
   display: grid;
   gap: 12px;
-  align-content: start;
+}
+
+.sidePanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanel .lineaList {
+  flex: 1;
+}
+
+.mainPanel {
+  height: 100%;
 }
 
 .lineaList {
   display: grid;
-  gap: 8px;
-  max-height: 430px;
+  gap: 6px;
   overflow: auto;
   padding-right: 2px;
+  align-content: start;
 }
+
+/* Accordion */
+
+.accordionItem {
+  border: 1px solid #d3e2f2;
+  border-radius: 12px;
+  background: #f8fbff;
+  overflow: hidden;
+}
+
+.accordionItemActive {
+  border-color: #205ea4;
+  background: linear-gradient(145deg, #eef5ff 0%, #e2eeff 100%);
+  box-shadow: 0 4px 12px rgba(20, 66, 123, 0.12);
+}
+
+.accordionHeader {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.accordionHeader strong {
+  color: #133964;
+  font-size: 13px;
+  flex: 1;
+}
+
+.accordionHeader small {
+  color: #5f7b99;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.accordionArrow {
+  color: #4c6785;
+  font-size: 12px;
+  min-width: 14px;
+}
+
+.accordionBody {
+  padding: 0 11px 11px;
+  display: grid;
+  gap: 7px;
+}
+
+.accordionBody p {
+  margin: 0;
+  color: #48607d;
+  font-size: 12px;
+}
+
+.accordionDetail {
+  font-size: 11px;
+  color: #48607d;
+}
+
+.accordionBody small {
+  color: #5f7b99;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.restrictionListCompact {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.restrictionListCompact li {
+  font-size: 11px;
+  color: #2f5277;
+  font-weight: 600;
+}
+
+/* Legacy line buttons (API mode) */
 
 .lineaButton {
   width: 100%;
@@ -185,7 +282,6 @@
 .mainStack {
   display: grid;
   gap: 12px;
-  align-content: start;
 }
 
 .actions {

@@ -7,11 +7,11 @@ function ProcessCardIcon() {
   return (
     <span className="anx-process-card-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none">
-        <path d="M6 4h12" />
-        <path d="M6 10h12" />
-        <path d="M6 16h12" />
-        <path d="M8 7.5 9.5 9 12 6.5" />
-        <path d="M8 13.5 9.5 15 12 12.5" />
+        <rect x="4" y="5" width="16" height="14" rx="3.5" />
+        <path d="M8.5 9.5h7" />
+        <path d="M8.5 13.5h7" />
+        <path d="m6.9 9.5.8.8 1.5-1.5" />
+        <path d="m6.9 13.5.8.8 1.5-1.5" />
       </svg>
     </span>
   );
@@ -21,10 +21,12 @@ function StepsIcon() {
   return (
     <span className="anx-process-section-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none">
-        <path d="M4.5 6h15" />
-        <path d="M4.5 12h15" />
-        <path d="M4.5 18h15" />
-        <path d="M7 8.5 8.2 9.7 10.6 7.3" />
+        <path d="m5.5 7 2 2 3-3" />
+        <path d="M11.5 7h7" />
+        <path d="m5.5 12 2 2 3-3" />
+        <path d="M11.5 12h7" />
+        <path d="m5.5 17 2 2 3-3" />
+        <path d="M11.5 17h7" />
       </svg>
     </span>
   );
@@ -34,10 +36,21 @@ function RequirementsIcon() {
   return (
     <span className="anx-process-section-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none">
-        <path d="M6 5h12v14H6z" />
+        <rect x="5" y="4.5" width="14" height="15" rx="3" />
         <path d="M9 9h6" />
         <path d="M9 13h6" />
         <path d="M9 17h4" />
+      </svg>
+    </span>
+  );
+}
+
+function StepBulletIcon() {
+  return (
+    <span className="anx-process-step-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="m8.8 12 2.2 2.2 4.2-4.2" />
       </svg>
     </span>
   );
@@ -94,26 +107,31 @@ export default function ProcesosPage() {
 
               <p className="anx-process-summary">{guide.summary}</p>
 
-              <section className="anx-process-block">
+              <section className="anx-process-block anx-process-block-steps">
                 <h3 className="anx-process-section-title">
                   <StepsIcon />
                   Pasos
                 </h3>
                 <ul className="anx-check-list">
                   {guide.steps.map((step, index) => (
-                    <li key={`${guide.id}-step-${index}`}>{step}</li>
+                    <li key={`${guide.id}-step-${index}`} className="anx-process-step-item">
+                      <StepBulletIcon />
+                      <span>{step}</span>
+                    </li>
                   ))}
                 </ul>
               </section>
 
-              <section className="anx-process-block">
+              <section className="anx-process-block anx-process-block-requirements">
                 <h3 className="anx-process-section-title">
                   <RequirementsIcon />
                   Requisitos clave
                 </h3>
                 <ul className="anx-dot-list">
                   {guide.requirements.map((requirement, index) => (
-                    <li key={`${guide.id}-req-${index}`}>{requirement}</li>
+                    <li key={`${guide.id}-req-${index}`} className="anx-process-requirement-item">
+                      {requirement}
+                    </li>
                   ))}
                 </ul>
               </section>

@@ -241,8 +241,6 @@ export function usePrestamosIsolatedSimulator() {
     updateLinea,
     updateMonto,
     updateCuotas,
-    updateEdad,
-    updateAntiguedad,
     updateIngreso,
     updateTipoAfiliado,
     updateModalidadTasa,
