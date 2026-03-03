@@ -8,15 +8,15 @@ export default function TramitesPage() {
       </article>
 
       <section className="anx-module-grid">
-        <article className="anx-module-card anx-panel">
+        <article className="anx-module-card anx-panel" style={{ opacity: 0.65, pointerEvents: "none" }}>
           <div className="anx-module-card-top">
             <div className="anx-module-title-wrap">
-              <ModuleIcon moduleKey="tramites" className="anx-module-card-icon" />
-              <h2>BEP Personería Jurídica</h2>
+              <ModuleIcon moduleKey="comunidad-vinculada" className="anx-module-card-icon" />
+              <h2>Comunidad Vinculada</h2>
             </div>
+            <span className="anx-badge">Proximamente</span>
           </div>
-          <p>Generación de BEP para aportes a través de Comunidad Vinculada - Personería Jurídica.</p>
-          <span className="anx-module-cta">Ver trámite</span>
+          <p>Gestión de aportes a través de Comunidad Vinculada.</p>
         </article>
       </section>
     </section>

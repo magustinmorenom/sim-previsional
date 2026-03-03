@@ -11,7 +11,8 @@ export type ModuleIconKey =
   | "tramites"
   | "chatbot-cps"
   | "simulador-previsional"
-  | "simulador-prestamos";
+  | "simulador-prestamos"
+  | "comunidad-vinculada";
 
 interface ModuleIconProps {
   moduleKey: string;
@@ -99,6 +100,15 @@ function iconFor(moduleKey: string): JSX.Element {
           <path d="M3 10h18" />
           <path d="M7 14h4" />
           <path d="M14 14h3" />
+        </svg>
+      );
+    case "comunidad-vinculada":
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="9" cy="7" r="3" />
+          <circle cx="17" cy="7" r="2.5" />
+          <path d="M3 20v-1.5C3 15.5 5.7 13 9 13s6 2.5 6 5.5V20" />
+          <path d="M16 13.5c2 .3 4 2 4 5V20" />
         </svg>
       );
     case "home":
