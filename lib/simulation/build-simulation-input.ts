@@ -33,9 +33,9 @@ export function validateEditableSimulationValues(
     errors.voluntaryEndAge = "La edad fin de aportes voluntarios es inválida.";
   }
 
-  if (Number.isFinite(values.voluntaryEndAge) && values.voluntaryEndAge <= currentAge) {
+  if (Number.isFinite(values.voluntaryEndAge) && values.voluntaryEndAge < currentAge) {
     errors.voluntaryEndAge =
-      "La edad fin de aportes voluntarios debe ser mayor que la edad actual.";
+      "La edad fin de aportes voluntarios debe ser mayor o igual que la edad actual.";
   }
 
   if (

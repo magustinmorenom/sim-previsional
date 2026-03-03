@@ -200,7 +200,7 @@ export default function HomePage() {
       setFormState({
         voluntaryMonthlyAmount: "0",
         retirementAge: String(nextContext.mandatoryContribution.endAgeDefault),
-        voluntaryEndAge: String(VOLUNTARY_END_AGE_DEFAULT)
+        voluntaryEndAge: String(nextContext.voluntaryContribution.endAgeDefault)
       });
       setResult(null);
       setError(null);
@@ -865,7 +865,7 @@ export default function HomePage() {
 
 function buildVoluntaryEndAgeLimits(retirementAge: number, currentAge: number): { min: number; max: number } {
   const safeMax = Math.max(0, Math.trunc(retirementAge));
-  const minCandidate = Math.max(0, Math.trunc(currentAge) + 1);
+  const minCandidate = Math.max(0, Math.trunc(currentAge));
   const safeMin = Math.min(minCandidate, safeMax);
 
   return {

@@ -721,7 +721,7 @@
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
   box-shadow: 0 -8px 40px rgba(10, 20, 40, 0.18);
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 220px);
   display: flex;
   flex-direction: column;
   transform: translateY(100%);

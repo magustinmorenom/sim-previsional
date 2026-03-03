@@ -119,6 +119,54 @@ describe("mapRemoteContextToAffiliateContext", () => {
     expect(result.beneficiaries[2].type).toBe("H");
   });
 
+  it("acepta afiliado mayor a 65 sin edades de aporte explícitas", () => {
+    const result = mapRemoteContextToAffiliateContext(
+      {
+        success: true,
+        message: "ok",
+        data: {
+          titular: {
+            nombre: "José Maria",
+            apellido: "Gonzalez",
+            legajo: "CP124900",
+            sexo: "M",
+            fechaNacimiento: "1955-10-28",
+            fechaMatriculacion: "1979-12-03",
+            invalido: false
+          },
+          grupoFamiliar: [
+            {
+              nombre: "Olga Del Valle",
+              apellido: "Segura",
+              relacion: "CONYUGE",
+              fechaNacimiento: "1952-02-09",
+              invalido: false
+            }
+          ],
+          cuentaCapitalizacion: {
+            aportesObligatorios: 21614488.67,
+            aportesVoluntarios: 1515291.68,
+            saldoTotal: 23129780.35
+          },
+          valorVAR: 99000,
+          valorMRS: 2000
+        }
+      },
+      { email: "josemaria@test.com" }
+    );
+
+    expect(result.mandatoryContribution.startAge).toBeGreaterThanOrEqual(65);
+    expect(result.mandatoryContribution.endAgeDefault).toBeGreaterThanOrEqual(
+      result.mandatoryContribution.startAge
+    );
+    expect(result.voluntaryContribution.endAgeDefault).toBeGreaterThanOrEqual(
+      result.voluntaryContribution.startAge
+    );
+    expect(result.funds.mandatory).toBe(21614488.67);
+    expect(result.funds.voluntary).toBe(1515291.68);
+    expect(result.beneficiaries).toHaveLength(2);
+  });
+
   it("bloquea cuando faltan campos obligatorios", () => {
     expect(() =>
       mapRemoteContextToAffiliateContext(

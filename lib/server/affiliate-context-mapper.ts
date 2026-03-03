@@ -823,7 +823,9 @@ export function mapRemoteContextToAffiliateContext(
 
   const mandatoryStart =
     mandatoryStartAge !== null ? mandatoryStartAge : fallbackStartAge !== null ? fallbackStartAge : null;
-  const mandatoryEnd = mandatoryEndAgeDefault !== null ? mandatoryEndAgeDefault : 65;
+  const mandatoryEnd = mandatoryEndAgeDefault !== null
+    ? mandatoryEndAgeDefault
+    : Math.max(65, mandatoryStart ?? 65);
   const voluntaryStart = voluntaryStartAge !== null ? voluntaryStartAge : mandatoryStart;
   const voluntaryEnd = voluntaryEndAgeDefault !== null ? voluntaryEndAgeDefault : mandatoryEnd;
 
