@@ -3602,3 +3602,360 @@ button {
     animation: none !important;
   }
 }
+
+/* ========================================================================
+   MOBILE SHELL — mob-* prefix
+   All styles below are additive; no existing desktop styles are modified.
+   ======================================================================== */
+
+.mob-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* --- Mobile Header --- */
+
+.mob-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.mob-header-logo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.mob-header-title {
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.mob-header-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.mob-header-chat-btn:active {
+  background: var(--line);
+}
+
+.mob-header-chat-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Mobile Content --- */
+
+.mob-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 14px;
+  padding-bottom: 80px;
+}
+
+/* --- Mobile Bottom Bar --- */
+
+.mob-bottom-bar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--surface);
+  border-top: 1px solid #d4e1ef;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(58px + env(safe-area-inset-bottom, 0px));
+}
+
+.mob-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 2px;
+  padding: 6px 2px 4px;
+  border: none;
+  background: none;
+  color: #4b6179;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mob-tab-active {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.mob-tab-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2.5px;
+  background: var(--brand);
+  border-radius: 0 0 2px 2px;
+}
+
+.mob-tab-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mob-tab-icon .anx-module-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.mob-tab-icon .anx-module-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mob-tab-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mob-tab-active .mob-tab-label {
+  font-weight: 800;
+}
+
+/* --- Mobile Drawer ("Más") --- */
+
+.mob-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(13, 31, 51, 0.45);
+  animation: mob-fade-in 0.2s ease;
+}
+
+.mob-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 46;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 30px rgba(9, 41, 77, 0.15);
+  max-height: 70dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: mob-slide-up 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mob-drawer-handle {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+}
+
+.mob-drawer-handle::after {
+  content: "";
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+.mob-drawer-title {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 0 18px 10px;
+  margin: 0;
+}
+
+.mob-drawer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px;
+}
+
+.mob-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.12s ease;
+}
+
+.mob-drawer-item:active {
+  background: var(--brand-soft);
+}
+
+.mob-drawer-item-active {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.mob-drawer-item .anx-module-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.mob-drawer-item .anx-module-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.mob-drawer-session {
+  padding: 10px 18px 14px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+
+/* --- Mobile Chat Overlay --- */
+
+.mob-chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  animation: mob-fade-in 0.2s ease;
+}
+
+.mob-chat-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.mob-chat-overlay-title {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.mob-chat-overlay-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.mob-chat-overlay-close:active {
+  background: var(--line);
+}
+
+.mob-chat-overlay-close svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mob-chat-overlay-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mob-chat-overlay-body .anx-chat-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mob-chat-overlay-body .anx-chat-head {
+  display: none;
+}
+
+.mob-chat-overlay-body .anx-chat-window {
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- Animations --- */
+
+@keyframes mob-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mob-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

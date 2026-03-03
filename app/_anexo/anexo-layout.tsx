@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 import { Breadcrumbs } from "@/app/_anexo/breadcrumbs";
 import { ContentTransition } from "@/app/_anexo/content-transition";
+import { MobileShell } from "@/app/_anexo/mobile-shell";
 import { NavigationLoadingOverlay } from "@/app/_anexo/navigation-loading-overlay";
 import { SessionChipline } from "@/app/_anexo/session-chipline";
 import { TopNav } from "@/app/_anexo/top-nav";
@@ -16,6 +17,17 @@ export async function AnexoLayout({ children }: { children: ReactNode }) {
   const session = parseAuthSessionCookieValue(sessionCookieValue);
   const hasSession = Boolean(session);
   const modules = getNavigationModules();
+
+  const deviceType = cookieStore.get("device-type")?.value;
+  const isMobile = deviceType === "mobile";
+
+  if (isMobile) {
+    return (
+      <MobileShell modules={modules} hasSession={hasSession} session={session}>
+        {children}
+      </MobileShell>
+    );
+  }
 
   return (
     <div className="anx-shell">
