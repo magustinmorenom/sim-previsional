@@ -3927,6 +3927,8 @@ button {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(155deg, #871f45 0%, #a12d52 46%, #1f4d82 100%);
+  padding: 12px 10px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
 .mob-chat-overlay-body .anx-chat-shell {
@@ -3937,6 +3939,16 @@ button {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.mob-chat-overlay-body .anx-chat-shell::before,
+.mob-chat-overlay-body .anx-chat-shell::after {
+  content: none;
 }
 
 .mob-chat-overlay-body .anx-chat-head {
@@ -3946,6 +3958,57 @@ button {
 .mob-chat-overlay-body .anx-chat-window {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: none;
+  background: transparent;
+  padding: 4px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 45, 82, 0.88) rgba(255, 255, 255, 0.14);
+}
+
+.mob-chat-overlay-body .anx-chat-bubble-assistant {
+  color: #ffffff;
+}
+
+.mob-chat-overlay-body .anx-chat-bubble-user {
+  color: #ffffff;
+}
+
+.mob-chat-overlay-body .anx-chat-bubble-role {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.mob-chat-overlay-body .anx-chat-typing small {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.mob-chat-overlay-body .anx-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 4px 4px 0;
+}
+
+.mob-chat-overlay-body .anx-chat-input {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.mob-chat-overlay-body .anx-chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.mob-chat-overlay-body .anx-chat-send {
+  background: #7a3f6e;
+  color: #ffffff;
+  border: 1px solid #93679b;
+}
+
+.mob-chat-overlay-body .anx-chat-send:disabled {
+  opacity: 0.62;
+  background: #8b6f92;
 }
 
 /* --- Animations --- */
