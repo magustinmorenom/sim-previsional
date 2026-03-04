@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ContentTransition } from "@/app/_anexo/content-transition";
 import { MobileBottomBar } from "@/app/_anexo/mobile-bottom-bar";
 import { MobileChatOverlay } from "@/app/_anexo/mobile-chat-overlay";
@@ -17,9 +17,17 @@ interface MobileShellProps {
   children: ReactNode;
 }
 
+const CHAT_OPEN_EVENT = "anx:chat-open";
+
 export function MobileShell({ modules, hasSession, session, children }: MobileShellProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setChatOpen(true);
+    window.addEventListener(CHAT_OPEN_EVENT, handler);
+    return () => window.removeEventListener(CHAT_OPEN_EVENT, handler);
+  }, []);
 
   return (
     <div className="mob-shell">
