@@ -38,7 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (error instanceof AffiliateContextValidationError) {
       return NextResponse.json(
         {
-          error: "La API remota devolvió datos incompletos para simular.",
+          error: error.message,
           code: "SIMULATION_CONTEXT_INVALID",
           details: error.issues
         },

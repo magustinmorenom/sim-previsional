@@ -448,7 +448,6 @@ export default function HomePage() {
         <header className="af-header">
           <div>
             <h1>Simulador Previsional</h1>
-            <p>Acceso y simulación en una sola vista.</p>
           </div>
         </header>
 
@@ -562,11 +561,7 @@ export default function HomePage() {
 
             {!contextLoading && contextError && (
               <article className="af-card">
-                <h2>Error de integración</h2>
-                <div className="af-status af-status-error">{contextError}</div>
-                <button type="button" className="af-btn af-btn-primary" onClick={() => void loadSimulationContext()}>
-                  Reintentar carga
-                </button>
+                <div className="af-status af-status-warning">{contextError}</div>
               </article>
             )}
 

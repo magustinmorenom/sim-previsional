@@ -501,6 +501,19 @@ function mapInfoPayloadToCanonical(
   }
 
   const titularRecord = titularRaw as Record<string, unknown>;
+
+  const tipoPasividad = readString(titularRecord, ["tipoPasividad", "passivityType"]);
+  if (tipoPasividad) {
+    const nombre =
+      joinName([titularRecord.nombre, titularRecord.apellido]) ||
+      readString(titularRecord, ["fullName", "name"]) ||
+      "Afiliado";
+    throw new AffiliateContextValidationError(
+      `${nombre} ya se encuentra con el beneficio previsional activo, no es posible realizar una simulación.`,
+      [`tipoPasividad: ${tipoPasividad}`]
+    );
+  }
+
   const titularFullName =
     joinName([titularRecord.nombre, titularRecord.apellido]) ||
     readString(titularRecord, ["fullName", "name"]) ||
