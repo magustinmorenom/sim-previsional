@@ -337,7 +337,7 @@ textarea {
 .af-age-option-grid {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -1247,6 +1247,10 @@ textarea {
 
   .af-editable-end-age-field .af-currency-input {
     max-width: 100%;
+  }
+
+  .af-age-option-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .af-age-inline-picker-compact .af-quick-button-age {
@@ -3860,9 +3864,103 @@ button {
 }
 
 .mob-drawer-session {
-  padding: 10px 18px 14px;
+  padding: 10px 14px 14px;
   border-top: 1px solid var(--line);
   margin-top: 4px;
+}
+
+/* --- Mobile Session Card (vertical layout) --- */
+
+.mob-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.mob-session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mob-session-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mob-session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mob-session-dot-online {
+  background: var(--ok);
+}
+
+.mob-session-dot-offline {
+  background: var(--line-strong);
+}
+
+.mob-session-name {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mob-session-label {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.mob-session-detail {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.mob-session-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  background: var(--brand);
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.mob-session-btn:active {
+  opacity: 0.85;
+}
+
+.mob-session-btn-logout {
+  background: none;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.mob-session-btn-logout:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* --- Mobile Chat Overlay --- */
