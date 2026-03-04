@@ -5,19 +5,6 @@ import type { ContentResponse, DocumentItem } from "@/lib/types/content";
 
 const PAGE_SIZE_OPTIONS = [10, 25] as const;
 
-function formatDate(dateIso: string): string {
-  const value = new Date(dateIso);
-  if (Number.isNaN(value.getTime())) {
-    return dateIso;
-  }
-
-  return value.toLocaleDateString("es-AR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-}
-
 export default function BibliotecaPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
