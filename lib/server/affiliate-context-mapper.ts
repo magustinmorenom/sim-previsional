@@ -503,7 +503,7 @@ function mapInfoPayloadToCanonical(
   const titularRecord = titularRaw as Record<string, unknown>;
 
   const tipoPasividad = readString(titularRecord, ["tipoPasividad", "passivityType"]);
-  if (tipoPasividad) {
+  if (tipoPasividad && tipoPasividad.toUpperCase() !== "NINGUNA") {
     const nombre =
       joinName([titularRecord.nombre, titularRecord.apellido]) ||
       readString(titularRecord, ["fullName", "name"]) ||
