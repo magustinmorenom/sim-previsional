@@ -619,6 +619,18 @@ export default function HomePage() {
                           <strong>{titularAge ?? "-"}</strong>
                         </article>
                       </div>
+                      {context.solidary.matriculationDate && (
+                        <div className="af-side-kpi-grid af-side-kpi-grid-3">
+                          <article className="af-side-kpi" style={{ gridColumn: "span 2" }}>
+                            <span>Inicio aportes</span>
+                            <strong>{formatIsoToDisplay(context.solidary.matriculationDate)}</strong>
+                          </article>
+                          <article className="af-side-kpi">
+                            <span>Edad inicio</span>
+                            <strong>{ageBetweenIsoDates(titular.birthDate, context.solidary.matriculationDate) ?? "-"}</strong>
+                          </article>
+                        </div>
+                      )}
                       <div className="af-side-inline-values">
                         <span>Invalidez: {formatInvalidity(titular.invalid)}</span>
                         <span>Grupo familiar: {counts.total}</span>
@@ -784,6 +796,7 @@ export default function HomePage() {
                         <div className="af-jubilacion-hero-breakdown">
                           <span>Capitalización: {formatCurrency(resolveCapitalizationBenefit(result))}</span>
                           <span>Fondo solidario: {formatCurrency(resolveSolidaryBenefit(result))}</span>
+                          <span className="anx-badge">FFU: {result.ppuu.toFixed(1)}</span>
                         </div>
                       </article>
 
@@ -1066,6 +1079,22 @@ function extractYear(iso: string): string {
   }
 
   return iso.split("-")[0];
+}
+
+function ageBetweenIsoDates(birthIso: string, referenceIso: string): number | null {
+  if (!ISO_DATE_REGEX.test(birthIso) || !ISO_DATE_REGEX.test(referenceIso)) {
+    return null;
+  }
+
+  const [bYear, bMonth, bDay] = birthIso.split("-").map(Number);
+  const [rYear, rMonth, rDay] = referenceIso.split("-").map(Number);
+
+  let age = rYear - bYear;
+  if (rMonth < bMonth || (rMonth === bMonth && rDay < bDay)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
 }
 
 function calculateAgeFromIso(iso: string): number | null {
