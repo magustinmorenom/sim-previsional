@@ -171,7 +171,6 @@ export default function BibliotecaPage() {
                   <th>Categoría</th>
                   <th>Tema</th>
                   <th>Tipo</th>
-                  <th>Vigencia</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -185,7 +184,6 @@ export default function BibliotecaPage() {
                     <td>{item.category}</td>
                     <td>{item.topic}</td>
                     <td>{item.fileType.toUpperCase()}</td>
-                    <td>{formatDate(item.publishedAt)}</td>
                     <td>
                       <a href={item.url} target="_blank" rel="noreferrer" className="anx-link-btn">
                         Descargar

@@ -1354,6 +1354,12 @@ textarea {
   gap: 8px;
   overflow-x: auto;
   padding: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.anx-topnav-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .anx-topnav-link {
