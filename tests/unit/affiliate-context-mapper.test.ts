@@ -119,6 +119,107 @@ describe("mapRemoteContextToAffiliateContext", () => {
     expect(result.beneficiaries[2].type).toBe("H");
   });
 
+  it("toma al conviviente (relacion OTRO) como cónyuge para el cálculo", () => {
+    // Caso testigo real: el CPS envía al conviviente con relacion "OTRO" y sin
+    // sexo. Debe entrar al grupo familiar como tipo "C" (cs = cónyuges/convivientes).
+    const result = mapRemoteContextToAffiliateContext(
+      {
+        success: true,
+        message: "ok",
+        data: {
+          calculationDate: "2026-06-16",
+          titular: {
+            nombre: "Paula Andrea",
+            apellido: "Salomon",
+            legajo: "CP476200",
+            sexo: "F",
+            fechaNacimiento: "1989-01-04",
+            fechaMatriculacion: "2015-03-06",
+            invalido: false
+          },
+          grupoFamiliar: [
+            {
+              nombre: "Amancio",
+              apellido: "Rabbia",
+              relacion: "HIJO",
+              fechaNacimiento: "2024-10-21",
+              invalido: false
+            },
+            {
+              nombre: "Juan Andres",
+              apellido: "Rabbia",
+              relacion: "OTRO",
+              fechaNacimiento: "1981-04-16",
+              invalido: false
+            }
+          ],
+          cuentaCapitalizacion: {
+            aportesObligatorios: 5003465,
+            aportesVoluntarios: 53290,
+            saldoTotal: 5056755
+          },
+          valorVAR: 150810,
+          valorMRS: 3047
+        }
+      },
+      { email: "paula@test.com" }
+    );
+
+    expect(result.beneficiaries).toHaveLength(3);
+    const types = result.beneficiaries.map((b) => b.type);
+    expect(types).toContain("C");
+    expect(result.beneficiaries.filter((b) => b.type === "C")).toHaveLength(1);
+    expect(result.beneficiaries.filter((b) => b.type === "H")).toHaveLength(1);
+    const conviviente = result.beneficiaries.find((b) => b.type === "C");
+    expect(conviviente?.fullName).toBe("Juan Andres Rabbia");
+    // sin sexo explícito, el conviviente toma el sexo opuesto al titular (F -> M).
+    expect(conviviente?.sex).toBe(1);
+  });
+
+  it("toma al conviviente (relacion CONVIVIENTE) como cónyuge — tipo destino del CPS", () => {
+    // Cuando el CPS migre al tipo propio "CONVIVIENTE", debe seguir entrando como "C".
+    const result = mapRemoteContextToAffiliateContext(
+      {
+        success: true,
+        message: "ok",
+        data: {
+          calculationDate: "2026-06-16",
+          titular: {
+            nombre: "Paula Andrea",
+            apellido: "Salomon",
+            legajo: "CP476200",
+            sexo: "F",
+            fechaNacimiento: "1989-01-04",
+            fechaMatriculacion: "2015-03-06",
+            invalido: false
+          },
+          grupoFamiliar: [
+            {
+              nombre: "Juan Andres",
+              apellido: "Rabbia",
+              relacion: "CONVIVIENTE",
+              fechaNacimiento: "1981-04-16",
+              invalido: false
+            }
+          ],
+          cuentaCapitalizacion: {
+            aportesObligatorios: 5003465,
+            aportesVoluntarios: 53290,
+            saldoTotal: 5056755
+          },
+          valorVAR: 150810,
+          valorMRS: 3047
+        }
+      },
+      { email: "paula@test.com" }
+    );
+
+    expect(result.beneficiaries.filter((b) => b.type === "C")).toHaveLength(1);
+    expect(result.beneficiaries.find((b) => b.type === "C")?.fullName).toBe(
+      "Juan Andres Rabbia"
+    );
+  });
+
   it("acepta afiliado mayor a 65 sin edades de aporte explícitas", () => {
     const result = mapRemoteContextToAffiliateContext(
       {

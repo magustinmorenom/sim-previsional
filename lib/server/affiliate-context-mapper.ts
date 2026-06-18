@@ -140,7 +140,22 @@ function parseType(value: unknown): "T" | "C" | "H" | null {
     return "T";
   }
 
-  if (normalized === "C" || normalized === "CONYUGE" || normalized === "PAREJA") {
+  // Conviviente se computa igual que cónyuge (cs = cónyuges/convivientes).
+  // Tipo destino del CPS: "CONVIVIENTE".
+  if (
+    normalized === "C" ||
+    normalized === "CONYUGE" ||
+    normalized === "PAREJA" ||
+    normalized === "CONVIVIENTE" ||
+    normalized === "CONCUBINO" ||
+    normalized === "CONCUBINA"
+  ) {
+    return "C";
+  }
+
+  // TODO(CPS-migración convivientes): quitar "OTRO" cuando el CPS migre a
+  // "CONVIVIENTE". Fallback temporal para registros viejos (relación genérica).
+  if (normalized === "OTRO") {
     return "C";
   }
 
@@ -460,18 +475,34 @@ function parseExternalInvalid(value: unknown): 0 | 1 {
   return 0;
 }
 
+// Cónyuge y conviviente se computan igual: el modelo actuarial define
+// cs = cantidad de cónyuges/convivientes. El tipo destino del CPS es
+// "CONVIVIENTE" (incluido vía CONV*).
 function parseExternalRelation(value: unknown): "C" | "H" | null {
   if (typeof value !== "string") {
     return null;
   }
 
   const normalized = value.trim().toUpperCase();
-  if (normalized.includes("CONY")) {
-    return "C";
-  }
 
   if (normalized.includes("HIJ")) {
     return "H";
+  }
+
+  if (
+    normalized.includes("CONY") ||
+    normalized.includes("CONV") ||
+    normalized.includes("CONCUBIN") ||
+    normalized.includes("PAREJA")
+  ) {
+    return "C";
+  }
+
+  // TODO(CPS-migración convivientes): quitar cuando el CPS migre todos los
+  // registros a "CONVIVIENTE". Hoy registros viejos (p.ej. legajo CP476200)
+  // siguen llegando como "OTRO" (genérico) y sin esto el conviviente se pierde.
+  if (normalized.includes("OTRO")) {
+    return "C";
   }
 
   return null;
